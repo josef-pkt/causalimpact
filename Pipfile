@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+pytest = "*"
+flake8 = "*"
+isort = "*"
+tox = "*"
+ipython = "*"
+pytest-coverage = "*"
+jupyter = "*"
+
+[packages]
+causalimpact = {path = ".", editable = true}
+statsmodels = "*"
+matplotlib = "*"
+jinja2 = "*"

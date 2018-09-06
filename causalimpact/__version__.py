@@ -20,4 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from causalimpact.main import CausalImpact
+VERSION = (0, 0, 1)
+
+__version__ = '.'.join([str(e) for e in VERSION])

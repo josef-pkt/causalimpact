@@ -20,4 +20,46 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from causalimpact.main import CausalImpact
+import pandas as pd
+import pytest
+
+from causalimpact.inferences import Inferences
+
+
+@pytest.fixture
+def inferer():
+    return Inferences(10)
+
+
+def test_inferer_cto():
+    inferer = Inferences(10)
+    assert inferer.n_sims == 10
+    assert inferer.inferences is None
+    assert inferer.p_value is None
+
+
+def test_p_value_read_only(inferer):
+    with pytest.raises(AttributeError):
+        inferer.p_value = 0.4
+        inferer.p_value = 0.3
+
+
+def test_p_value_bigger_than_one(inferer):
+    with pytest.raises(ValueError):
+        inferer.p_value = 2
+
+
+def test_p_value_lower_than_zero(inferer):
+    with pytest.raises(ValueError):
+        inferer.p_value = -1
+
+
+def test_inferences_read_only(inferer):
+    with pytest.raises(AttributeError):
+        inferer.inferences = pd.DataFrame([1, 2, 3])
+        inferer.inferences = pd.DataFrame([1, 2, 3])
+
+
+def test_inferences_raises_invalid_input(inferer):
+    with pytest.raises(ValueError):
+        inferer.inferences = 1
