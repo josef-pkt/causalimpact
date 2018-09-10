@@ -20,4 +20,41 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from causalimpact.main import CausalImpact
+"""Tests for module misc.py"""
+
+import numpy as np
+import pandas as pd
+import pytest
+from pandas.util.testing import assert_almost_equal
+
+from causalimpact.misc import standardize, unstandardize
+
+
+def test_basic_standardize():
+    data = {
+        'c1': [1, 4, 8, 9, 10],
+        'c2': [4, 8, 12, 16, 20]
+    }
+    data = pd.DataFrame(data)
+
+    result, (mu, sig) = standardize(data)
+    assert_almost_equal(
+        np.zeros(data.shape[1]),
+        result.mean().values
+    )
+
+    assert_almost_equal(
+        np.ones(data.shape[1]),
+        result.std(ddof=0).values
+    )
+
+def test_standardize_w_various_distinct_inputs():
+    test_data = [[1, 2, 1], [1, np.nan, 3], [10, 20, 30]]
+    test_data = [pd.DataFrame(data, dtype="float") for data in test_data]
+    for data in test_data:
+        result, (mu, sig) = standardize(data)
+        pd.util.testing.assert_frame_equal(unstandardize(result, (mu, sig)), data)
+
+def test_standardize_raises_single_input():
+    with pytest.raises(ValueError):
+        standardize(pd.DataFrame([1]))

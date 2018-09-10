@@ -1,0 +1,12 @@
+[run]
+branch = True
+include =
+    causalimpact/*
+omit = tests/*
+
+
+[report]
+exclude_lines =
+    raise NotImplementedError
+    pass
+    pragma: no cover
