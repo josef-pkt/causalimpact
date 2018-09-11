@@ -66,7 +66,6 @@ class CausalImpact:
       alpha: A float that ranges between 0. and 1. indicating the significance level that
              will be used when statistically testing for signal presencen in the post-
              intervention period.
-
       kwargs:
         standardize: Bool value; if `True`, applies standardizes data to have zero mean
                      and unitary standard deviation.
@@ -112,18 +111,53 @@ class CausalImpact:
       >>> ci = CausalImpact(data, pre_period, post_period, model=ucm)
     """
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
-        pass
+        data, pre_data, post_data, model, alpha = self._check_input_data(
+            data, pre_period, post_period, model, alpha, **kwargs)
+        self.data = data
+        self.pre_period = pre_period
+        self.pre_data = pre_data
+        self.post_period = post_period
+        self.post_data = post_data
+        if not model:
+            self.model = self._construct_default_model(self.pre_data)
+        self.trained_model = self.model.train()
+        self.inferences = self._process_inferences()
 
-    def check_causal_input_data(self, data, pre_period, post_period, model, alpha,
-                                **kwargs):
+    def _process_inferences(self):
+        """Uses the trained model to make predictions for the post-intervention (or test
+        data) period. 
+
+        Returns
+        -------
+          inferences: posterior inferences of ``y`` variable being forecasted.
+        """
+
+
+    def _construct_default_model(self, pre_data):
+        """Constructs default local level unobserved states model with input data.
+
+        Args
+        ----
+          pre_data: pandas DataFrame.
+
+        Returns
+        -------
+          model: ``UnobservedComponentsModel`` built using pre-intervention data as
+                 training data.
+        """
+        model = UnobservedComponentsModel(exog=pre_data[:, 0], level='llevel',
+                                          endog=pre_data[:, 1:])
+        return model
+
+    def _check_input_data(self, data, pre_period, post_period, model, alpha, **kwargs):
         """Checks and formats when appropriate the input data for running the Causal
         Impact algorithm. Performs assertions such as missing or invalid arguments.
 
         Args
         ----
           data: `numpy.array` or `pandas.DataFrame`.
-          pre_period: a list of size two containing either `int` or `str` values.
-          post_period: the same as ``pre_period``.
+          pre_data: pre-intervention data sliced from input data.
+          post_data: post_intervention data sliced from input data.
           model: Either None or an UnobservedComponentsModel object.
           alpha: float.
           kwargs:
@@ -148,12 +182,12 @@ class CausalImpact:
             raise ValueError('{args} cannot be empty'.format(args=', '.join(none_args)))
         processed_data = self._format_input_data(data)
         pre_data, post_data = self._process_pre_post_data(processed_data, pre_period,
-                                                          post_period)
         model_args = self._process_causal_kwargs(**kwargs)
         if model:
             model = self._process_causal_input_model(model)
+        return data, pre_data, post_data, model, alpha
 
-    def _process_causal_alpha(self, alpha):
+    def _process_alpha(self, alpha):
         """Asserts input ``alpha`` is appropriate to be used in the model.
 
         Args
@@ -176,8 +210,8 @@ class CausalImpact:
             raise ValueError(
                 '``alpha`` must range between 0 (zero) and 1 (one) inclusive.'
             )
-        
-    def _process_causal_input_model(self, model):
+
+    def _process_input_model(self, model):
         """Checkes whether input model was properly built and is ready to be run.
 
         Args
@@ -204,19 +238,19 @@ class CausalImpact:
                 raise ValueError('Model must have `level` attribute set.')
         except AttributeError:
             raise ValueError('Model must have attribute level')
-         try:
+        try:
             if not model.exog:
                 raise ValueError('Model must have `exog` attribute set.')
         except AttributeError:
             raise ValueError('Model must have attribute exog')
-         try:
+        try:
             if not model.data:
                 raise ValueError('Model must have `data` attribute set.')
         except AttributeError:
             raise ValueError('Model must have attribute exog')
         return model
 
-    def _process_causal_kwargs(self, **kwargs):
+    def _process_kwargs(self, **kwargs):
         """Process general options related to how Causal Impact will be implemented.
 
         Args
@@ -345,13 +379,11 @@ class CausalImpact:
         none_args = [d for d in period if d]
         if none_args:
             raise ValueError('Input period cannot have `None` values')
-
         if not (
             (isinstance(period[0], int) and isinstance(period[1], int)) or
             (isinstance(period[1], str) and isinstance(period[1], str))
         ):
             raise ValueError('Input must contain either `int` or `str`')
-
         # If period contains strings, try to convert to datetime. ``data_index`` should
         # also be of DatetimeIndex type.
         if isinstance(period[0], str):
