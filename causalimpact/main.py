@@ -24,7 +24,7 @@
 
 import numpy as np
 import pandas as pd
-
+from pandas.core.indexes.datetimes import DatetimeIndex
 
 class CausalImpact:
     """Main class used to run the Causal Impact algorithm implemented by Google as
@@ -44,7 +44,6 @@ class CausalImpact:
       data: Can be either a numpy array or a pandas DataFrame where the first column must
             contain the `y` measured value while the others contain the covariates
             `X` that are used in the linear regression component of the model.
-
       pre_period: A list of size two containing either `int` or `str` values that
                   references the first time point in the trained data up to the last one
                   that will be used in the pre-intervention period for training the
@@ -55,21 +54,22 @@ class CausalImpact:
                   so that the trained model can more precisely predict what should have
                   happened in the post-intervention period had no interference taken
                   place.
-
       post_period: The same as `pre_period` but references where the post-intervention
                    data begins and ends. This is the part of `data` used to make
                    inferences.
-
       model: An `UnobservedComponentsModel` from `statsmodels` package whose default value
              is ``None``. If a customized model is desired than this argument can be used
              otherwise a default 'local level' model is implemented. When using a user-
              defined model, it's still required to send `data` as input even though the
              pre-intervention period is already present in the model `endog` and `exog`
              attributes.
-
       alpha: A float that ranges between 0. and 1. indicating the significance level that
              will be used when statistically testing for signal presencen in the post-
              intervention period.
+
+      kwargs:
+        standardize: Bool value; if `True`, applies standardizes data to have zero mean
+                     and unitary standard deviation.
 
     Returns
     -------
@@ -111,10 +111,11 @@ class CausalImpact:
       >>> ucm = UnobservedComponentsModel(endog=pre_y, level='llevel', exog=pre_X)
       >>> ci = CausalImpact(data, pre_period, post_period, model=ucm)
     """
-    def __init__(self, data, pre_period, post_period, model=None, alpha=0.05):
+    def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
         pass
 
-    def check_ci_input_data(self, data, pre_period, post_period, model, alpha):
+    def check_causal_input_data(self, data, pre_period, post_period, model, alpha,
+                                **kwargs):
         """Checks and formats when appropriate the input data for running the Causal
         Impact algorithm. Performs assertions such as missing or invalid arguments.
 
@@ -125,6 +126,8 @@ class CausalImpact:
           post_period: the same as ``pre_period``.
           model: Either None or an UnobservedComponentsModel object.
           alpha: float.
+          kwargs:
+            standardize: Bool.
 
         Returns
         -------
@@ -136,13 +139,108 @@ class CausalImpact:
 
         Raises
         ------
+          ValueError: if input arguments are ``None``.
         """
         input_args = locals().copy()
         model = input_args.pop('model')
         none_args = [arg for arg, value in input_args.items() if value is None]
         if none_args:
             raise ValueError('{args} cannot be empty'.format(args=', '.join(none_args)))
-        checked_data = self._format_input_data(data)
+        processed_data = self._format_input_data(data)
+        pre_data, post_data = self._process_pre_post_data(processed_data, pre_period,
+                                                          post_period)
+        model_args = self._process_causal_kwargs(**kwargs)
+        if model:
+            model = self._process_causal_input_model(model)
+
+    def _process_causal_alpha(self, alpha):
+        """Asserts input ``alpha`` is appropriate to be used in the model.
+
+        Args
+        ----
+          alpha: A float ranging from 0. and 1. indicating level of significance to
+                 assert when signal is present in post-intervention data.
+
+        Returns
+        -------
+          alpha: Validated ``alpha`` value.
+
+        Raises
+        ------
+          ValueError: if alpha is not float.
+                      if alpha is not between 0. and 1.
+        """
+        if not isinstance(alpha, float):
+            raise ValueError('``alpha`` must be of type `float`.')
+        if alpha < 0 or alpha > 1:
+            raise ValueError(
+                '``alpha`` must range between 0 (zero) and 1 (one) inclusive.'
+            )
+        
+    def _process_causal_input_model(self, model):
+        """Checkes whether input model was properly built and is ready to be run.
+
+        Args
+        ----
+          model: ``UnobservedComponentsModel`` from `statsmodels`.
+
+        Returns
+        -------
+          model: Checked ``UnobservedComponentsModel`` from `statsmodels`.
+
+        Raises
+        ------
+          ValueError: if model is not of appropriate type.
+                      if model doesn't have attribute level or it's not set.
+                      if model doesn't have attribute exog or it's not set.
+                      if model doesn't have attribute data or it's not set.
+        """
+        if not isinstance(model, UnobservedComponentsModel):
+            raise ValueError(
+                'Input ``model`` must be of type ``UnobservedComponentsModel``'
+            )
+        try:
+            if not model.level:
+                raise ValueError('Model must have `level` attribute set.')
+        except AttributeError:
+            raise ValueError('Model must have attribute level')
+         try:
+            if not model.exog:
+                raise ValueError('Model must have `exog` attribute set.')
+        except AttributeError:
+            raise ValueError('Model must have attribute exog')
+         try:
+            if not model.data:
+                raise ValueError('Model must have `data` attribute set.')
+        except AttributeError:
+            raise ValueError('Model must have attribute exog')
+        return model
+
+    def _process_causal_kwargs(self, **kwargs):
+        """Process general options related to how Causal Impact will be implemented.
+
+        Args
+        ----
+          kwargs:
+            standardize: Bool.
+
+        Returns
+        -------
+          dict of:
+            standardize: Validated bool.
+
+        Raises
+        ------
+          ValueError: if standardize is not of type `bool`.
+        """
+        standardize = kwargs.get('standardize')
+        if standardize is None:
+            standardize = False
+        if not isinstance(standardize, bool):
+            raise ValueException('standardize argument must be of type `bool`')
+        return {
+            'standardize': standardize
+        }
 
     def _format_input_data(self, data):
         """Validates and formats input data.
@@ -182,9 +280,9 @@ class CausalImpact:
                 raise ValueError('Input data cannot have NAN values')
         return data
 
-    def _format_pre_post_data(self, data, pre_period, post_period):
-        """Checks ``pre_period`` and ``post_period`` and returns data sliced accordingly
-        to each period.
+    def _process_pre_post_data(self, data, pre_period, post_period):
+        """Checks ``pre_period``, ``post_period`` and returns data sliced accordingly to
+        each period.
 
         Args
         ----
@@ -194,16 +292,33 @@ class CausalImpact:
 
         Returns
         -------
-          periods: list where first value is pre-intervention data and second value is
-                   post-intervention.
+          result: First value is pre-intervention data and second value is
+                  post-intervention.
         Raises
         ------
+          ValueError: if pre_period last value is bigger than post intervention period.
         """
-        pass
-        # if not isinstance(
+        pre_period = self._process_period(pre_period, data.index)
+        post_period = self._process_period(post_period, data.index)
 
-    def _check_periods(self, period, data_index):
-        """Validates pre or post period inputs.
+        if pre_period[1] > post_period[0]:
+            raise ValueError(
+                'Values in training data cannot be present in the post-intervention '
+                'data. Please fix your pre_period value to cover at most one point less '
+                'from when the intervention happened.'
+            )
+        if post_period[1] < post_period[0]:
+            raise ValueError('``post_period`` last number must be bigger than its first.')
+        if pre_period[1] < pre_period[0]:
+            raise ValueError('``pre_period`` last number must be bigger than its first'.) 
+        result = [
+            data.iloc[pre_period[0], pre_period[1], :],
+            data.iloc[post_period[0], post_period[1], :]
+        ]
+        return result
+
+    def _process_period(self, period, data_index):
+        """Validates period inputs.
 
         Args
         ----
@@ -218,6 +333,7 @@ class CausalImpact:
         ------
           ValueError: if input ``period`` is not of type `list`.
                       if input doesn't have two elements.
+                      if period date values are not present in data.
         """
         if not isinstance(period, list):
             raise ValueError('Input ``period`` must be of type `list`.')
@@ -226,9 +342,54 @@ class CausalImpact:
                 '``period`` must have two values regarding the beginning and end of '
                 'the pre and post intervention data'
             )
-        null_args = [d for d in period if d]
-        if null_args:
-            raise ValueError('Input period cannot have Null values')
-        # if period contains strings, try to convert to datetime. ``data_index`` should
-        # also be of DatetimeIndex type
-        # if isinstance(
+        none_args = [d for d in period if d]
+        if none_args:
+            raise ValueError('Input period cannot have `None` values')
+
+        if not (
+            (isinstance(period[0], int) and isinstance(period[1], int)) or
+            (isinstance(period[1], str) and isinstance(period[1], str))
+        ):
+            raise ValueError('Input must contain either `int` or `str`')
+
+        # If period contains strings, try to convert to datetime. ``data_index`` should
+        # also be of DatetimeIndex type.
+        if isinstance(period[0], str):
+            if isinstance(data_index, DatetimeIndex):
+                period = self._convert_str_period_to_int(period, data)
+            else:
+                raise ValueError(
+                    'If input ``period`` is string then input ``data`` must have index '
+                    'of type `DatetimeIndex`.'
+                )
+        if period[1] - period[0] < 3:
+            raise ValueError('``pre_period`` must span at least 3 time points')
+        return period
+
+    def _convert_str_period_to_int(self, period, data):
+        """Converts string values from ``period`` to integer offsets from ``data``.
+
+        Args
+        ----
+          period: list of str.
+          data: pandas DataFrame.
+
+        Returns
+        -------
+          period: list of int where each value is the correspondent integer based value
+                  in ``data`` index.
+
+        Raises
+        ------
+          ValueError: if values in ``period`` are not present in ``data``.
+        """
+        result = []
+        for date in period:
+            try:
+                offset = data.index.get_loc(date)
+                result.append(offset)
+            except KeyError:
+                raise ValueError('{date} is not preset in data index'.format(
+                    date=date)
+                )
+        return result
