@@ -22,11 +22,45 @@
 
 """Causal Impact class for running impact inferences caused in a time evolving system."""
 
+
 import numpy as np
 import pandas as pd
 from pandas.core.indexes.datetimes import DatetimeIndex
 
-class CausalImpact:
+from causalimpact.inferences import Inferences
+from causalimpact.misc import standardize
+
+class BaseCausal(Inferences):
+    """Works as a container for attributes and methods that are used in the Causal
+    Impact algorithm. Offers support for inferences, summary report and plotting
+    functionality. 
+
+    Args
+    ----
+      data: pandas DataFrame already processed and confirmed to be appropriate to be used
+            in Causal Impact algorithm.
+      pre_period: list containing validated pre-intervention intervals.
+      post_period: list containing validated post-intervention intervals.
+      pre_data: sliced data regarding the pre-intervention period.
+      post_data: sliced data regarding post-intervention period.
+      alpha: float indicating significance level for hypothesis testing.
+      mu_sig: list with two values where first is the man used to normalize pre_data and
+               second value is the standard deviation also used in the normalization.
+      kwargs: used here just so we can throw several arguments to the initialization
+              process without having to selecting each variable accordingly.
+    """
+    def __init__(self, data, pre_period, post_period, pre_data, post_data, alpha,
+                 **kwargs):
+        self.data = data
+        self.pre_period = pre_period
+        self.post_period = post_period
+        self.pre_data = pre_data
+        self.post_data = post_data
+        self.alpha = alpha
+        self.mu_sig = None
+
+
+class CausalImpact(BaseCausal):
     """Main class used to run the Causal Impact algorithm implemented by Google as
     described in their paper:
 
@@ -111,42 +145,67 @@ class CausalImpact:
       >>> ci = CausalImpact(data, pre_period, post_period, model=ucm)
     """
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
-        data, pre_data, post_data, model, alpha = self._check_input_data(
-            data, pre_period, post_period, model, alpha, **kwargs)
-        self.data = data
-        self.pre_period = pre_period
-        self.pre_data = pre_data
-        self.post_period = post_period
-        self.post_data = post_data
-        if not model:
-            self.model = self._construct_default_model(self.pre_data)
+        checked_input = self._check_input_data(data, pre_period, post_period, model,
+                                               alpha, **kwargs)
+        super(CausalImpact, self).__init__(**checked_input)
+        self.model_args = checked_input['model_args']
+        self.model = checked_input['model']
         self.trained_model = self.model.train()
-        self.inferences = self._process_inferences()
+        self._process_posterior_inferences()
 
-    def _process_inferences(self):
+    @property
+    def model_args(self):
+        return self._model_args
+
+    @model_args.setter
+    def model_args(self, value):
+        if value.get('standardize'):
+            self._standardize_pre_post_data()
+        self._model_args = value
+
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, value):
+        if value is None:
+            self._model = self._construct_default_model()
+        else:
+            self._model = value
+
+    def _standardize_pre_post_data(self):
+        """Applies normal standardization in pre and post data, based on mean and std of
+        pre-data (as it's used for training our model). Sets new values for
+        ``self.pre_data``, ``self.post_data``, ``self.mu_sig``
+        """
+        normed_pre_data, (mu, sig) = standardize(self.pre_data)
+        self.pre_data = normed_data
+        self.post_data = (self.post_data - mu) / sig
+        self.mu_sig = (mu[0], sig[0])
+
+    def _process_posterior_inferences(self):
         """Uses the trained model to make predictions for the post-intervention (or test
-        data) period. 
+        data) period.
 
         Returns
         -------
-          inferences: posterior inferences of ``y`` variable being forecasted.
+          dict of:
+            inferences: Posterior inferences of ``y`` variable being forecasted.
         """
+        normed_pre_data, (mu, sig) = standardize(self.pre_data)
+        normed_post_data, _ = standardize(self.post_data)
 
-
-    def _construct_default_model(self, pre_data):
+    def _construct_default_model(self):
         """Constructs default local level unobserved states model with input data.
-
-        Args
-        ----
-          pre_data: pandas DataFrame.
 
         Returns
         -------
           model: ``UnobservedComponentsModel`` built using pre-intervention data as
                  training data.
         """
-        model = UnobservedComponentsModel(exog=pre_data[:, 0], level='llevel',
-                                          endog=pre_data[:, 1:])
+        model = UnobservedComponentsModel(exog=self.pre_data[:, 0].values, level='llevel',
+                                          endog=self.pre_data[:, 1:].values)
         return model
 
     def _check_input_data(self, data, pre_period, post_period, model, alpha, **kwargs):
@@ -165,11 +224,14 @@ class CausalImpact:
 
         Returns
         -------
-          data: a pandas DataFrame with validated data.
-          pre_period: a list with two validated values of either `int` or `str`.
-          post_period: the same as ``pre_period``.
-          model: Either ``None`` or `UnobservedComponentsModel` validated to be correct.
-          alpha: float ranging from 0 to 1.
+          dict of:
+            data: a pandas DataFrame with validated data.
+            pre_data: data sliced using ``pre_period`` values.
+            post_data: the same as ``pre_data``.
+            model: Either ``None`` or `UnobservedComponentsModel` validated to be correct.
+            alpha: float ranging from 0 to 1.
+            model_args: dict containing general information related to how to process
+                        the causal impact algorithm.
 
         Raises
         ------
@@ -182,10 +244,20 @@ class CausalImpact:
             raise ValueError('{args} cannot be empty'.format(args=', '.join(none_args)))
         processed_data = self._format_input_data(data)
         pre_data, post_data = self._process_pre_post_data(processed_data, pre_period,
+                                                          post_period)
         model_args = self._process_causal_kwargs(**kwargs)
         if model:
             model = self._process_causal_input_model(model)
-        return data, pre_data, post_data, model, alpha
+        return {
+            'data': data,
+            'pre_period': pre_period,
+            'post_period': post_period,
+            'pre_data': pre_data,
+            'post_data': post_data,
+            'model': model,
+            'alpha': alpha,
+            'model_args':  model_args
+        }
 
     def _process_alpha(self, alpha):
         """Asserts input ``alpha`` is appropriate to be used in the model.
