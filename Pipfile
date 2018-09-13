@@ -14,3 +14,4 @@ pytest-coverage = "*"
 
 [packages]
 causalimpact = {path = ".", editable = true}
+matplotlib = "*"

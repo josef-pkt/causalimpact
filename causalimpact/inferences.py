@@ -30,16 +30,37 @@ class Inferences(object):
     """All computations related to the inference process of the post-intervention
     prediction is handled through the methods implemented here.
     """
-    def compile_posterior_inferences(self):
-        """Run the posterior inference computation."""
-        pre_predictions = self.trained_model.get_prediction()
-        post_predictions = self.trained_model.get_forecast(
-            steps=len(self.post_data),
-            exog=self.post_data.iloc[:, 1],
-            alpha=self.alpha
+    def compile_posterior_inferences(
+            self,
+            trained_model,
+            pre_data,
+            post_data,
+            alpha,
+            mu_sig
+        ):
+        """Runs the posterior causal impact inference computation using the already
+        trained model.
+
+        Args
+        ----
+          trained_model: ``UnobservedComponentsResultsWrapper``.
+          pre_data: pandas DataFrame.
+          post_data: pandas DataFrame.
+          alpha: float.
+          mu_sig: tuple where first value is the mean used for standardization and second
+              value is the standard deviation.
+
+        Returns
+        -------
+        """
+        pre_predict = trained_model.get_prediction()
+        post_predict =trained_model.get_forecast(
+            steps=len(post_data),
+            exog=post_data.iloc[:, 1].values,
+            alpha=alpha
         )
-        # If `self.mu_sig` is not None then data has been standardized
-        if self.mu_sig:
-            pre_predictions = unstandardize(pre_predictions.predicted_mean, self.mu_sig)
-            post_predictions = unstandardize(post_predictions.predicted_mean, self.mu_sig)
+        # If `mu_sig` is not None then data has been standardized
+        if mu_sig:
+            pre_predict = unstandardize(pre_predict.predicted_mean, mu_sig)
+            post_predict = unstandardize(post_predict.predicted_mean, mu_sig)
             

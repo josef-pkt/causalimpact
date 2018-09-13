@@ -38,16 +38,14 @@ class BaseCausal(Inferences):
     Args
     ----
       data: pandas DataFrame already processed and confirmed to be appropriate to be used
-            in Causal Impact algorithm.
+          in Causal Impact algorithm.
       pre_period: list containing validated pre-intervention intervals.
       post_period: list containing validated post-intervention intervals.
       pre_data: sliced data regarding the pre-intervention period.
       post_data: sliced data regarding post-intervention period.
       alpha: float indicating significance level for hypothesis testing.
       mu_sig: list with two values where first is the man used to normalize pre_data and
-               second value is the standard deviation also used in the normalization.
-      kwargs: used here just so we can throw several arguments to the initialization
-              process without having to selecting each variable accordingly.
+          second value is the standard deviation also used in the normalization.
     """
     def __init__(self, data, pre_period, post_period, pre_data, post_data, alpha,
                  **kwargs):
@@ -57,6 +55,8 @@ class BaseCausal(Inferences):
         self.pre_data = pre_data
         self.post_data = post_data
         self.alpha = alpha
+        self.normed_pre_data = None
+        self.normed_post_data = None
         self.mu_sig = None
 
 
@@ -76,7 +76,7 @@ class CausalImpact(BaseCausal):
     Args
     ----
       data: Can be either a numpy array or a pandas DataFrame where the first column must
-            contain the `y` measured value while the others contain the covariates
+          contain the `y` measured value while the others contain the covariates
             `X` that are used in the linear regression component of the model.
       pre_period: A list of size two containing either `int` or `str` values that
                   references the first time point in the trained data up to the last one
@@ -186,15 +186,15 @@ class CausalImpact(BaseCausal):
 
     def _process_posterior_inferences(self):
         """Uses the trained model to make predictions for the post-intervention (or test
-        data) period.
+        data) period. Invokes the class `Inferences` to process the forecasts.
 
         Returns
         -------
           dict of:
             inferences: Posterior inferences of ``y`` variable being forecasted.
         """
-        normed_pre_data, (mu, sig) = standardize(self.pre_data)
-        normed_post_data, _ = standardize(self.post_data)
+        self.compile_posterior_inferences(
+            self.
 
     def _construct_default_model(self):
         """Constructs default local level unobserved states model with input data.
