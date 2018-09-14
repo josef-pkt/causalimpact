@@ -1,0 +1,6 @@
+Posterior Inference {Causal Impact}
+                    Average       Cumulative
+Actual              {{summary.average.actual}}             {{summary.cumulative.actual}}
+Prediction (s.d.)   {{summary.average.predicted}} ({{(summary.average.predicted_upper - summary.average.predicted_lower) / 4.0 | round(1)}})       {{summary.cumulative.predicted}} ({{(summary.cumulative.predicted_upper - summary.cumulative.predicted_lower / 4) | round(1)}})
+
+{{(1 - alpha) * 100}}%     [{{summary.average.predicted_lower}}, {{summary.average.predicted_upper}}] [{{summary.cumulative.predicted_lower}}, {{summary.cumulative.predicted_upper}}]

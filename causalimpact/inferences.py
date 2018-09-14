@@ -36,23 +36,23 @@ class Inferences(object):
     ----
       inferences: pandas DataFrame with all the necessary information for running the
           final analysis for causal impact. The columnas are:
-              'cum_post_y': culmulative response ``y``.
-              'preds': predictions for pre and post data.
-              'preds_lower': lower boundary of predictions.
-              'preds_upper': upper boundary for predictions.
-              'cum_post_pred': cumulative of predictions in post data.
-              'cum_post_pred_lower': cumulative of lower boundary predictions in post
+              cum_post_y: culmulative response ``y``.
+              preds: predictions for pre and post data.
+              preds_lower: lower boundary of predictions.
+              preds_upper: upper boundary for predictions.
+              cum_post_pred: cumulative of predictions in post data.
+              cum_post_pred_lower: cumulative of lower boundary predictions in post
                   data.
-              'cum_post_pred_upper': cumulative of upper boundary predictions in post
+              cum_post_pred_upper: cumulative of upper boundary predictions in post
                   data.
-              'point_effects': the difference between predicted data and observed ``y``.
-              'point_effects_lower': difference between lower predicted data and
+              point_effects: the difference between predicted data and observed ``y``.
+              point_effects_lower: difference between lower predicted data and
                   observed ``y``.
-              'point_effects_upper': difference between upper predicted data and
+              point_effects_upper: difference between upper predicted data and
                   observed ``y``.
-              'cum_effects': cumulative of point effects in post data.
-              'cum_effects_lower': cumulative of lower point effects in post data.
-              'cum_effects_upper': cumulative of upper point effects in post data.
+              cum_effects: cumulative of point effects in post data.
+              cum_effects_lower: cumulative of lower point effects in post data.
+              cum_effects_upper: cumulative of upper point effects in post data.
     """
     def __init__(self, inferences=None):
         self.inferences = None
@@ -100,34 +100,41 @@ class Inferences(object):
         )
         pre_preds = self._unstardardize(pre_predictor.predicted_mean, self.mu_sig)
         post_preds = self._unstardardize(post_predictor.predicted_mean, self.mu_sig)
+
         # Sets index properly
         pre_preds.index = self.pre_data.index
         post_preds.index = self.post_data.index
+
         # Confidence Intervals
         pre_ci = self._unstardardize(pre_predictor.conf_int(alpha=self.alpha)
         pre_preds_lower = pre_ci.iloc[:, 0] # Only valid from statsmodels 0.9.0
         pre_preds_upper = pre_ci.iloc[:, 1]
-        post_ci = self._unstardardize(post_predictor.conf_int(alpha=self.alpha)
+        post_ci = self._unstardardize(post_predictor.conf_int(alpha=self.alpha))
         post_preds_lower = post_ci[:, 0]
         post_preds_upper = post_ci[:, 1]
+
         # Sets index properly
         pre_preds_lower.index = self.pre_data.index
         pre_preds_upper.index = self.pre_data.index
         post_preds_lower.index = self.post_data.index
         post_preds_upper.index = self.post_data.index
+
        # Concatenations
         preds = pd.concat([pre_preds, post_preds])
         preds_lower = pd.concat([pre_preds_lower, post_preds_lower])
         preds_upper = pd.concat([pre_preds_upper, post_preds_upper])
+
         # Cumulative analysis
         post_cum_y = np.cumsum(self.post_data.iloc[:, 0])
         post_cum_pred = np.cumsum(post_preds)
         post_cum_pred_lower = np.cumsum(post_preds_lower)
         post_cum_pred_upper = np.cumsum(post_preds_upper)
+
         # Effects analysis
         point_effects = self.data.iloc[:, 0] - preds
         point_effects_lower = self.data.iloc[:, 0] - preds_lower
         point_effects_upper = self.data.iloc[:, 0] - preds_upper
+
         # Cumulative Effects analysis
         cum_effects_lower = np.cumsum(post_preds_lower)
         cum_effects_upper = np.cumsum(post_preds_upper)
@@ -136,6 +143,8 @@ class Inferences(object):
                 cum_post_y,
                 preds,
                 post_preds,
+                post_preds_lower,
+                post_preds_upper,
                 preds_lower,
                 preds_upper,
                 post_cum_pred,
@@ -149,9 +158,13 @@ class Inferences(object):
                 cum_effects_upper
             ]
         )
+
         self.inferences.index = [
             'cum_post_y',
             'preds',
+            'post_preds',
+            'post_preds_lower',
+            'post_preds_upper'
             'preds_lower',
             'preds_upper',
             'cum_post_pred',
@@ -168,7 +181,7 @@ class Inferences(object):
     def summarize_posterior_inference(self):
         """After running the posterior inferences compilation, this method aggregates
         the results and gets the final interpretation for the causal impact results, such
-        as what was the observed absolute impact of the given intervention.
+        as what is the expected absolute impact of the given intervention.
 
         Raises
         ------
@@ -178,8 +191,54 @@ class Inferences(object):
         infers = self.inferences
         if infers is None:
             raise RuntimeError('First run inferences compilation.')
+
+        # Compute the mean of metrics
         mean_post_y = self.post_data.iloc[:, 0].mean()
-        mean_pred = infers['
-        
+        mean_post_pred = infers['post_preds'].mean()
+        mean_post_pred_lower = infers['post_preds_lower'].mean()
+        mean_post_pred_upper = infers['post_preds_upper'].mean()
 
+        # Compute the sum of  metrics
+        sum_post_y = self.post_data.iloc[:, 0].sum()
+        sum_post_pred = infers['post_preds'].sum()
+        sum_post_pred_lower = infers['post_preds_lower'].sum()
+        sum_post_pred_upper = infers['post_preds_upper'].sum()
 
+        # Causal Impact metrics
+        abs_effect = mean_post_pred - mean_post_y
+        abs_effect_lower = mean_post_pred_lower - mean_post_y
+        abs_effect_upper = mean_post_pred_upper - mean_post_y
+
+        sum_abs_effect = sum_post_pred - sum_post_y
+        sum_abs_effect_lower = sum_post_pred_lower - sum_post_y
+        sum_abs_effect_upper = sum_post_pred_upper - sum_post_y
+
+        rel_effect = abs_effect / mean_post_y
+        rel_effect_lower = abs_effect_lower / mean_post_y
+        rel_effect_upper = abs_effect_upper / mean_post_y
+
+        sum_rel_effect = sum_abs_effect / sum_post_y
+        sum_rel_effect_lower = sum_abs_effect_lower / sum_post_y
+        sum_rel_effect_upper = sum_abs_effect_upper / sum_post_y
+
+        # Prepares all this data into a DataFrame for later retrieval if requested
+        summary_data = [
+            [mean_post_y, sum_post_y],
+            [mean_post_pred, sum_post_pred],
+            [mean_post_pred_lower, sum_post_pred_lower],
+            [mean_post_pred_upper, sum_post_pred_upper],
+            [abs_effect, sum_abs_effect],
+            [abs_effect_lower, sum_abs_effect_lower],
+            [abs_effect_upper, sum_abs_effect_upper],
+            [rel_effect, sum_rel_effect],
+            [rel_effect_lower, sum_rel_effect_lower],
+            [rel_effect_upper, sum_rel_effect_upper]
+        ]
+
+        self.summary_data = pd.DataFrame(
+            summary,
+            columns=['average', 'cumulative'],
+            index=['actual', 'predicted', 'predicted_lower', 'predicted_uppper', 
+                'abs_effect', 'abs_effect_lower', 'abs_effect_upper', 'rel_effect,'
+                'rel_effect_lower', 'rel_effect_upper']
+        )
