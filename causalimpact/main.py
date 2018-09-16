@@ -28,9 +28,10 @@ import pandas as pd
 from pandas.core.indexes.datetimes import DatetimeIndex
 
 from causalimpact.inferences import Inferences
+from causalimpact.summary import Summary
 from causalimpact.misc import standardize
 
-class BaseCausal(Inferences):
+class BaseCausal(Inferences, Summary):
     """Works as a container for attributes and methods that are used in the Causal
     Impact algorithm. Offers support for inferences, summary report and plotting
     functionality. 
@@ -50,6 +51,7 @@ class BaseCausal(Inferences):
     def __init__(self, data, pre_period, post_period, pre_data, post_data, alpha,
                  **kwargs):
         super(self, Inferences).__init__()
+        super(self, Summary).__init__()
         self.data = data
         self.pre_period = pre_period
         self.post_period = post_period
@@ -192,6 +194,7 @@ class CausalImpact(BaseCausal):
             inferences: Posterior inferences of ``y`` variable being forecasted.
         """
         self.compile_posterior_inferences()
+        self.summarize_posterior_inferences()
 
     def _construct_default_model(self):
         """Constructs default local level unobserved states model with input data.

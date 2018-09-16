@@ -26,13 +26,15 @@ import os
 
 from jinja2 import Template
 
+from causalimpact.misc import get_z_score
+
 
 _here = os.path.abspath(__file__)
 summary_tmpl_path = os.path.join(_here, 'templates', 'summary')
 report_tmpl_path = os.path.join(_here, 'templates', 'report')
 
-SUMMARY_TMPL = open(summary_tmpl_path).read()
-REPORT_TMPL = open(report_tmpl_path).read()
+SUMMARY_TMPL = Template(open(summary_tmpl_path).read())
+REPORT_TMPL = Template(open(report_tmpl_path).read())
 
 
 class Summary(object):
@@ -57,7 +59,7 @@ class Summary(object):
 
         Returns
         -------
-          String containing results of the causal impact analysis.
+          summary: string containing results of the causal impact analysis.
 
         Raises
         ------
@@ -67,5 +69,18 @@ class Summary(object):
         if self.summary_data is None:
             raise RuntimeError('Posterior inferences must be first computed before '
                 'running `summary`.')
+        if output not in {'summary', 'report'}:
+            raise ValueError('Please choose either ``summary`` or ``report`` for output.')
         if output == 'summary':
-        
+            summary = SUMMARY_TMPL.render(
+                summary=self.summary_data.to_dict(),
+                alpha=self.alpha,
+                z_score=get_z_score(1 - self.alpha),
+                p_value=self.p_value
+            )
+        else:
+            summary = REPORT_TMPL.render(
+                summary=self.summary_data.to_dict(),
+                alpha=self.alpha
+            )
+        return summary

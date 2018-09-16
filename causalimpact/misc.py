@@ -22,6 +22,8 @@
 
 """Miscellaneous functions to help in the implementation of Causal Impact."""
 
+import scipy.stats as stats
+
 
 def standardize(data):
     """Applies standardization to input data. Result should have mean zero and standard
@@ -67,3 +69,17 @@ def unstandardize(data, mus_sigs):
     mu, sig = mus_sigs
     data = (data * sig) + mu
     return data
+
+
+def get_z_score(p):
+    """Returns the correspondent z-score with probability area p.
+
+    Args
+    ----
+      p: float ranging between 0 and 1 representing the probability area to convert.
+
+    Returns
+    -------
+      The z-score correspondent of p.
+    """
+    return stats.norm.ppf(p)
