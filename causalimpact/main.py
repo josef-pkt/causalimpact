@@ -20,38 +20,49 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Causal Impact class for running impact inferences caused in a time evolving system."""
+"""
+Causal Impact class for running impact inferences caused in a time evolving system.
+"""
 
 
 import numpy as np
 import pandas as pd
 from pandas.core.indexes.datetimes import DatetimeIndex
+from statsmodels.tsa.statespace.structural import UnobservedComponents
 
 from causalimpact.inferences import Inferences
 from causalimpact.summary import Summary
 from causalimpact.misc import standardize
 
 class BaseCausal(Inferences, Summary):
-    """Works as a container for attributes and methods that are used in the Causal
+    """
+    Works as a container for attributes and methods that are used in the Causal
     Impact algorithm. Offers support for inferences, summary report and plotting
-    functionality. 
+    functionality.
 
     Args
     ----
-      data: pandas DataFrame already processed and confirmed to be appropriate to be used
-          in Causal Impact algorithm.
-      pre_period: list containing validated pre-intervention intervals.
-      post_period: list containing validated post-intervention intervals.
-      pre_data: sliced data regarding the pre-intervention period.
-      post_data: sliced data regarding post-intervention period.
-      alpha: float indicating significance level for hypothesis testing.
-      mu_sig: list with two values where first is the man used to normalize pre_data and
+      data: pandas DataFrame.
+          Input data processed and confirmed to be appropriate to be used in the Causal
+          Impact algorithm.
+      pre_period: list.
+          Containing validated pre-intervention intervals.
+      post_period: list.
+          Containing validated post-intervention intervals.
+      pre_data: pandas DataFrame.
+          Sliced data regarding the pre-intervention period.
+      post_data: pandas DataFrame.
+          Sliced data regarding post-intervention period.
+      alpha: float.
+          Indicating significance level for hypothesis testing.
+      mu_sig: list.
+          With two values where first is the man used to normalize pre_data and
           second value is the standard deviation also used in the normalization.
     """
     def __init__(self, data, pre_period, post_period, pre_data, post_data, alpha,
                  **kwargs):
-        super(self, Inferences).__init__()
-        super(self, Summary).__init__()
+        Inferences.__init__(self, n_sims=kwargs.get('n_sims', 1000))
+        Summary.__init__(self)
         self.data = data
         self.pre_period = pre_period
         self.post_period = post_period
@@ -64,7 +75,8 @@ class BaseCausal(Inferences, Summary):
 
 
 class CausalImpact(BaseCausal):
-    """Main class used to run the Causal Impact algorithm implemented by Google as
+    """
+    Main class used to run the Causal Impact algorithm implemented by Google as
     described in their paper:
 
     https://google.github.io/CausalImpact/CausalImpact.html
@@ -78,35 +90,39 @@ class CausalImpact(BaseCausal):
 
     Args
     ----
-      data: Can be either a numpy array or a pandas DataFrame where the first column must
-          contain the `y` measured value while the others contain the covariates
-          `X` that are used in the linear regression component of the model.
-      pre_period: A list of size two containing either `int` or `str` values that
-          references the first time point in the trained data up to the last one that will
-          be used in the pre-intervention period for training the model. For example,
-          valid inputs are: `[0, 30]` or `['20180901', '20180930']`. The latter can be
-          used only if the input `data` is a pandas DataFrame whose index is time based.
-          Ideally, it should slice the data up to when the intervention happened so that
+      data: numpy array, pandas DataFrame.
+          First column must contain the `y` measured value while the others contain the
+          covariates `X` that are used in the linear regression component of the model.
+      pre_period: list.
+          A list of size two containing either `int` or `str` values that references the
+          first time point in the trained data up to the last one that will be used in the
+          pre-intervention period for training the model. For example, valid inputs are:
+          [0, 30] or ['20180901', '20180930']. The latter can be used only if the input
+          `data` is a pandas DataFrame whose index is time based.
+          Ideally, it should slice the data up to when the intervention started so that
           the trained model can more precisely predict what should have happened in the
           post-intervention period had no interference taken place.
-      post_period: The same as `pre_period` but references where the post-intervention
+      post_period: list.
+          The same as `pre_period` but references where the post-intervention
           data begins and ends. This is the part of `data` used to make inferences.
-      model: An `UnobservedComponentsModel` from `statsmodels` package whose default value
-          is ``None``. If a customized model is desired than this argument can be used
-          otherwise a default 'local level' model is implemented. When using a user-
+      model: `statsmodels.tsa.statespace.structural.UnobservedComponents`.
+          If a customized model is desired than this argument can be used
+          otherwise a default 'local level' model is internally built. When using a user-
           defined model, it's still required to send `data` as input even though the
           pre-intervention period is already present in the model `endog` and `exog`
-          attributes.
-      alpha: A float that ranges between 0. and 1. indicating the significance level that
+          attributes. We do so to keep the contract of the method simpler.
+      alpha: float.
+          A float that ranges between 0 and 1 indicating the significance level that
           will be used when statistically testing for signal presencen in the post-
           intervention period.
       kwargs:
-        standardize: Bool value; if `True`, applies standardizes data to have zero mean
-            and unitary standard deviation.
+        standardize: bool.
+            If `True`, applies standardizes data to have zero mean and unitary standard
+            deviation.
 
     Returns
     -------
-      A CausalImpact object.
+      CausalImpact object.
 
     Examples:
     ---------
@@ -141,116 +157,149 @@ class CausalImpact(BaseCausal):
 
       >>> pre_y = data[:70, 0]
       >>> pre_X = data[:70, 1:]
-      >>> ucm = UnobservedComponentsModel(endog=pre_y, level='llevel', exog=pre_X)
+      >>> ucm = UnobservedComponents(endog=pre_y, level='llevel', exog=pre_X)
       >>> ci = CausalImpact(data, pre_period, post_period, model=ucm)
     """
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
-        checked_input = self._check_input_data(data, pre_period, post_period, model,
-                                               alpha, **kwargs)
+        checked_input = self._process_input_data(data, pre_period, post_period, model,
+                                                 alpha, **kwargs)
         super(CausalImpact, self).__init__(**checked_input)
         self.model_args = checked_input['model_args']
         self.model = checked_input['model']
-        self.trained_model = self.model.train()
+        self.trained_model = self.model.fit()
         self._process_posterior_inferences()
 
     @property
     def model_args(self):
+        """
+        Gets the general settings used to guide the creation of the Causal model.
+
+        Returns
+        -------
+          dict:
+            standardize: bool.
+        """
         return self._model_args
 
     @model_args.setter
     def model_args(self, value):
+        """
+        Sets general settings for how to build the Causal model.
+
+        Args
+        ----
+          value: dict
+              standardize: bool.
+        """
         if value.get('standardize'):
             self._standardize_pre_post_data()
         self._model_args = value
 
     @property
     def model(self):
+        """
+        Gets UnobservedComponents model that will be used for computing the Causal
+        Impact algorithm.
+        """
         return self._model
 
     @model.setter
     def model(self, value):
+        """
+        Sets model object.
+
+        Args
+        ----
+          value: `UnobservedComponents`.
+        """
         if value is None:
-            self._model = self._construct_default_model()
+            self._model = self.construct_default_model()
         else:
             self._model = value
 
     def _standardize_pre_post_data(self):
-        """Applies normal standardization in pre and post data, based on mean and std of
-        pre-data (as it's used for training our model). Sets new values for
-        ``self.pre_data``, ``self.post_data``, ``self.mu_sig``
         """
-        normed_pre_data, (mu, sig) = standardize(self.pre_data)
-        self.normed_pre_data = normed_data
+        Applies normal standardization in pre and post data, based on mean and std of
+        pre-data (as it's used for training our model). Sets new values for
+        `self.pre_data`, `self.post_data`, `self.mu_sig`.
+        """
+        self.normed_pre_data, (mu, sig) = standardize(self.pre_data)
         self.normed_post_data = (self.post_data - mu) / sig
         self.mu_sig = (mu[0], sig[0])
 
     def _process_posterior_inferences(self):
-        """Uses the trained model to make predictions for the post-intervention (or test
-        data) period. Invokes the class `Inferences` to process the forecasts.
-
-        Returns
-        -------
-          dict of:
-            inferences: Posterior inferences of ``y`` variable being forecasted.
+        """
+        Uses the trained model to make predictions for the post-intervention (or test
+        data) period by invoking the class `Inferences` to process the forecasts. All
+        data related to predictions, point effects and cumulative responses will be
+        processed here.
         """
         self.compile_posterior_inferences()
         self.summarize_posterior_inferences()
 
-    def _construct_default_model(self):
+    def construct_default_model(self):
         """Constructs default local level unobserved states model with input data.
 
         Returns
         -------
-          model: ``UnobservedComponentsModel`` built using pre-intervention data as
-                 training data.
+          model: `UnobservedComponents` built using pre-intervention data as training
+              data.
         """
-        data = self.normed_pre_data or self.pre_data
-        model = UnobservedComponentsModel(data[:, 0], level='llevel', exog=data[:, 1:])
+        data = self.pre_data if self.normed_pre_data is None else self.normed_pre_data
+        model = UnobservedComponents(data.iloc[:, 0], level='llevel',
+                                     exog=data.iloc[:, 1:])
         return model
 
-    def _check_input_data(self, data, pre_period, post_period, model, alpha, **kwargs):
-        """Checks and formats when appropriate the input data for running the Causal
+    def _process_input_data(self, data, pre_period, post_period, model, alpha, **kwargs):
+        """
+        Checks and formats when appropriate the input data for running the Causal
         Impact algorithm. Performs assertions such as missing or invalid arguments.
 
         Args
         ----
-          data: `numpy.array` or `pandas.DataFrame` where first column is the response
-              variable ``y`` and other columns correspond to the covariates ``X``.
-          pre_data: pre-intervention data sliced from input data.
-          post_data: post_intervention data sliced from input data.
-          model: Either None or an UnobservedComponentsModel object.
+          data: numpy.array, pandas.DataFrame.
+              First column is the response variable `y` and other columns correspond to
+              the covariates `X`.
+          pre_data: numpy.array, pandas.DataFrame.
+              Pre-intervention data sliced from input data.
+          post_data: numpy.array, pandas.DataFrame.
+              Post_intervention data sliced from input data.
+          model: None, UnobservedComponents.
           alpha: float.
           kwargs:
-            standardize: Bool.
+            standardize: bool.
 
         Returns
         -------
           dict of:
-            data: a pandas DataFrame with validated data.
-            pre_data: data sliced using ``pre_period`` values.
-            post_data: the same as ``pre_data``.
-            model: Either ``None`` or `UnobservedComponentsModel` validated to be correct.
+            data: pandas DataFrame.
+                Validated data, first column is `y` and the others is the `X` covariates.
+            pre_data: pandas DataFrame.
+                Data sliced using `pre_period` values.
+            post_data: pandas DataFrame.
+            model: Either `None` or `UnobservedComponents` validated to be correct.
             alpha: float ranging from 0 to 1.
             model_args: dict containing general information related to how to process
                         the causal impact algorithm.
 
         Raises
         ------
-          ValueError: if input arguments are ``None``.
+          ValueError: if input arguments are `None`.
         """
         input_args = locals().copy()
         model = input_args.pop('model')
         none_args = [arg for arg, value in input_args.items() if value is None]
         if none_args:
-            raise ValueError('{args} cannot be empty'.format(args=', '.join(none_args)))
+            raise ValueError('{args} input cannot be empty'.format(
+                             args=', '.join(none_args)))
         processed_data = self._format_input_data(data)
         pre_data, post_data = self._process_pre_post_data(processed_data, pre_period,
                                                           post_period)
-        model_args = self._process_causal_kwargs(**kwargs)
+        model_args = self._process_kwargs(**kwargs)
         if model:
-            model = self._process_causal_input_model(model)
+            model = self._process_input_model(model)
         return {
-            'data': data,
+            'data': processed_data,
             'pre_period': pre_period,
             'post_period': post_period,
             'pre_data': pre_data,
@@ -261,42 +310,47 @@ class CausalImpact(BaseCausal):
         }
 
     def _validate_y(self, y):
-        """Validates if input response variable is correct and doesn't have invalid input.
+        """
+        Validates if input response variable is correct and doesn't have invalid input.
 
         Args
         ----
-          y: numpy.array or pandas DataFrame of response variable sent in input data.
+          y: pandas Series
+             Response variable sent in input data in first column.
 
         Raises
         ------
-          ValueError: if ``y`` is None.
-                      if values in ``y`` are Null.
-                      if less than 3 (three) non-null values in ``y`` (as in this case
-                        we can't even train a model).
-                      if ``y`` is constant (in this case it doesn't make much sense to
+          ValueError: if `y` is None.
+                      if values in `y` are Null.
+                      if less than 3 (three) non-null values in `y` (as in this case
+                          we can't even train a model).
+                      if `y` is constant (in this case it doesn't make much sense to
                         make predictions as the time series doesn't change in the training
                         phase.
         """
         if y is None:
-            raise ValueError('Input response ``y`` cannot be None')
+            raise ValueError('Input response y cannot be None')
         if np.all(y.isna()):
             raise ValueError('Input response cannot have just Null values')
         if y.notna().values.sum() < 3:
             raise ValueError('Input response must have more than 3 points at least')
-        if y.std(skipna=True, ddof=0).values[0] == 0:
+        if y.std(skipna=True, ddof=0) == 0:
             raise ValueError('Input response cannot be constant')
         
     def _process_alpha(self, alpha):
-        """Asserts input ``alpha`` is appropriate to be used in the model.
+        """
+        Asserts input `alpha` is appropriate to be used in the model.
 
         Args
         ----
-          alpha: A float ranging from 0. and 1. indicating level of significance to
-                 assert when signal is present in post-intervention data.
+          alpha: float.
+              Ranges from 0 up to 1 indicating level of significance to assert when
+              testing for presence of signal in post-intervention data.
 
         Returns
         -------
-          alpha: Validated ``alpha`` value.
+          alpha: float.
+              Validated `alpha` value.
 
         Raises
         ------
@@ -304,22 +358,24 @@ class CausalImpact(BaseCausal):
                       if alpha is not between 0. and 1.
         """
         if not isinstance(alpha, float):
-            raise ValueError('``alpha`` must be of type `float`.')
+            raise ValueError('alpha must be of type float.')
         if alpha < 0 or alpha > 1:
             raise ValueError(
-                '``alpha`` must range between 0 (zero) and 1 (one) inclusive.'
+                'alpha must range between 0 (zero) and 1 (one) inclusive.'
             )
 
     def _process_input_model(self, model):
-        """Checkes whether input model was properly built and is ready to be run.
+        """
+        Checkes whether input model was properly built and is ready to be run.
 
         Args
         ----
-          model: ``UnobservedComponentsModel`` from `statsmodels`.
+          model: `UnobservedComponents`.
 
         Returns
         -------
-          model: Checked ``UnobservedComponentsModel`` from `statsmodels`.
+          model: `UnobservedComponents`.
+              Validated model.
 
         Raises
         ------
@@ -328,39 +384,40 @@ class CausalImpact(BaseCausal):
                       if model doesn't have attribute exog or it's not set.
                       if model doesn't have attribute data or it's not set.
         """
-        if not isinstance(model, UnobservedComponentsModel):
+        if not isinstance(model, UnobservedComponents):
             raise ValueError(
-                'Input ``model`` must be of type ``UnobservedComponentsModel``'
+                'Input model must be of type UnobservedComponents.'
             )
         try:
-            if not model.level:
-                raise ValueError('Model must have `level` attribute set.')
+            if model.level is None:
+                raise ValueError('Model must have level attribute set.')
         except AttributeError:
-            raise ValueError('Model must have attribute level')
+            raise ValueError('Model must have attribute level.')
         try:
-            if not model.exog:
-                raise ValueError('Model must have `exog` attribute set.')
+            if model.exog is None:
+                raise ValueError('Model must have exog attribute set.')
         except AttributeError:
-            raise ValueError('Model must have attribute exog')
+            raise ValueError('Model must have attribute exog.')
         try:
-            if not model.data:
-                raise ValueError('Model must have `data` attribute set.')
+            if model.data is None:
+                raise ValueError('Model must have data attribute set.')
         except AttributeError:
-            raise ValueError('Model must have attribute exog')
+            raise ValueError('Model must have attribute exog.')
         return model
 
     def _process_kwargs(self, **kwargs):
-        """Process general options related to how Causal Impact will be implemented.
+        """
+        Process general options related to how Causal Impact will be implemented.
 
         Args
         ----
           kwargs:
-            standardize: Bool.
+            standardize: bool.
 
         Returns
         -------
           dict of:
-            standardize: Validated bool.
+            standardize: bool.
 
         Raises
         ------
@@ -368,15 +425,16 @@ class CausalImpact(BaseCausal):
         """
         standardize = kwargs.get('standardize')
         if standardize is None:
-            standardize = False
+            standardize = True # Default behaviour is to set standardization to True.
         if not isinstance(standardize, bool):
-            raise ValueException('standardize argument must be of type `bool`')
+            raise ValueException('standardize argument must be of type bool')
         return {
             'standardize': standardize
         }
 
     def _format_input_data(self, data):
-        """Validates and formats input data.
+        """
+        Validates and formats input data.
 
         Args
         ----
@@ -384,13 +442,14 @@ class CausalImpact(BaseCausal):
 
         Returns
         -------
-          data: validated pandas DataFrame data to be used in Causal Impact algorithm.
+          data: pandas DataFrame.
+              Validated data to be used in Causal Impact algorithm.
 
         Raises
         ------
-          ValueError: if input ``data`` is non-convertible to pandas DataFrame.
-                      if input ``data`` has non-numeric values.
-                      if input ``data`` has less than 3 points.
+          ValueError: if input `data` is non-convertible to pandas DataFrame.
+                      if input `data` has non-numeric values.
+                      if input `data` has less than 3 points.
                       if input covariates have NAN values.
         """
         if not isinstance(data, pd.DataFrame):
@@ -398,13 +457,13 @@ class CausalImpact(BaseCausal):
                 data = pd.DataFrame(data)
             except ValueError as err:
                 raise ValueError(
-                    'Input ``data`` is not valid. Cause of error: {err}'.format(
+                    'Input data is not valid. Cause of error: {err}'.format(
                         err=str(err))
                 )
         self._validate_y(data.iloc[:, 0])
         # Must contain only numeric values
         if not data.applymap(np.isreal).values.all():
-            raise ValueError('Input ``data`` must contain only numeric values')
+            raise ValueError('Input data must contain only numeric values')
         # Must have at least 3 points of observed data
         if data.shape[0] < 3:
             raise ValueError('Input data must have more than 3 points')
@@ -415,19 +474,21 @@ class CausalImpact(BaseCausal):
         return data
 
     def _process_pre_post_data(self, data, pre_period, post_period):
-        """Checks ``pre_period``, ``post_period`` and returns data sliced accordingly to
-        each period.
+        """
+        Checks `pre_period`, `post_period` and returns data sliced accordingly to  each
+        period.
 
         Args
         ----
           data: pandas DataFrame.
-          pre_period: list with `int` or `str` values.
-          post_period: same as ``pre_period``.
+          pre_period: list.
+              Contains either `int` or `str` values.
+          post_period: same as `pre_period`.
 
         Returns
         -------
-          result: First value is pre-intervention data and second value is
-                  post-intervention.
+          result: list.
+              First value is pre-intervention data and second value is post-intervention.
         Raises
         ------
           ValueError: if pre_period last value is bigger than post intervention period.
@@ -442,22 +503,25 @@ class CausalImpact(BaseCausal):
                 'from when the intervention happened.'
             )
         if post_period[1] < post_period[0]:
-            raise ValueError('``post_period`` last number must be bigger than its first.')
+            raise ValueError('post_period last number must be bigger than its first.')
         if pre_period[1] < pre_period[0]:
-            raise ValueError('``pre_period`` last number must be bigger than its first'.) 
+            raise ValueError('pre_period last number must be bigger than its first.') 
         result = [
-            data.iloc[pre_period[0], pre_period[1], :],
-            data.iloc[post_period[0], post_period[1], :]
+            data.iloc[pre_period[0]: pre_period[1], :],
+            data.iloc[post_period[0]: post_period[1], :]
         ]
         return result
 
     def _process_period(self, period, data_index):
-        """Validates period inputs.
+        """
+        Validates period inputs.
 
         Args
         ----
-          period: a list containing two values that can be either `int` or `str`.
-          data_index: index of input data such as `RangeIndex` from pandas.
+          period: list.
+              Containing two values that can be either `int` or `str`.
+          data_index: `RangeIndex`, `DatetimeIndex`
+              Index of input data such as `RangeIndex` from pandas.
 
         Returns
         -------
@@ -465,25 +529,25 @@ class CausalImpact(BaseCausal):
 
         Raises
         ------
-          ValueError: if input ``period`` is not of type `list`.
+          ValueError: if input `period` is not of type list.
                       if input doesn't have two elements.
                       if period date values are not present in data.
         """
         if not isinstance(period, list):
-            raise ValueError('Input ``period`` must be of type `list`.')
+            raise ValueError('Input period must be of type list.')
         if len(period) != 2:
             raise ValueError(
-                '``period`` must have two values regarding the beginning and end of '
+                'period must have two values regarding the beginning and end of '
                 'the pre and post intervention data'
             )
-        none_args = [d for d in period if d]
+        none_args = [d for d in period if d is None]
         if none_args:
             raise ValueError('Input period cannot have `None` values')
         if not (
             (isinstance(period[0], int) and isinstance(period[1], int)) or
             (isinstance(period[1], str) and isinstance(period[1], str))
         ):
-            raise ValueError('Input must contain either `int` or `str`')
+            raise ValueError('Input must contain either int or str')
         # If period contains strings, try to convert to datetime. ``data_index`` should
         # also be of DatetimeIndex type.
         if isinstance(period[0], str):
@@ -491,15 +555,16 @@ class CausalImpact(BaseCausal):
                 period = self._convert_str_period_to_int(period, data)
             else:
                 raise ValueError(
-                    'If input ``period`` is string then input ``data`` must have index '
-                    'of type `DatetimeIndex`.'
+                    'If input period is string then input data must have index '
+                    'of type DatetimeIndex.'
                 )
         if period[1] - period[0] < 3:
-            raise ValueError('``pre_period`` must span at least 3 time points')
+            raise ValueError('pre_period must span at least 3 time points')
         return period
 
     def _convert_str_period_to_int(self, period, data):
-        """Converts string values from ``period`` to integer offsets from ``data``.
+        """
+        Converts string values from `period` to integer offsets from `data`.
 
         Args
         ----
@@ -508,12 +573,12 @@ class CausalImpact(BaseCausal):
 
         Returns
         -------
-          period: list of int where each value is the correspondent integer based value
-                  in ``data`` index.
+          period: list of int.
+              Where each value is the correspondent integer based value in `data` index.
 
         Raises
         ------
-          ValueError: if values in ``period`` are not present in ``data``.
+          ValueError: if values in `period` are not present in `data`.
         """
         result = []
         for date in period:

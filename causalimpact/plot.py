@@ -42,7 +42,60 @@ class Plot(object):
         """
         if self.summary_data is None:
             raise RuntimeError('Please first run inferences before plotting results')
-        for panel in panels:
-            
-    
-        
+
+        inferences = self.inferences
+        intervention_idx = self.post_data.index.get_loc(self.post_period[0])
+        n_panels = len(panels)
+        fig = plt.figure()
+        ax = plt.subplot(n_panels, 1, 1)
+
+        if 'original' in panels:
+            ax.plot(self.data.iloc[:, 0], 'k', label='y')
+            ax.plot(inferences['preds'], 'b--', label='Predicted')
+            ax.axvline(intervention_idx, c='k', linestyle='--')
+            ax.fill_between(
+                inferences['preds'].index,
+                inferences['preds_lower'],
+                inferences['preds_uppwer'],
+                facecolor='blue',
+                interpolate=True,
+                alpha=0.25
+            )
+            #ax.setp(ax.get_xticklabels(), visible=True if n_panels == 1 else False)
+            ax.legend()
+
+        if 'pointwise' in panels:
+            ax = plt.subplot(n_panels, 1, 2, sharex=ax)
+            ax.plot(inferences['point_effects'], 'b--', label='Point Effects')
+            ax.axvline(intervention_idx, c='k', linestyle='--')
+            ax.fill_between(
+                inferences['point_effects'].index,
+                inferences['point_effects_lower'],
+                inferences['point_effects_upper'],
+                facecolor='blue',
+                interpolate=True,
+                alpha=0.25
+            )
+            #ax.setp(ax.getxticklabels(), visible=True if n_panels == 2 else False)
+            ax.legend()
+
+        if 'cumulative' in panels:
+            ax = plt.subplot(n_panels, 1, 3, sharex=ax)
+            ax.plot(inferences['cum_effects'], 'b--', label='Cumulative Effect')
+            ax.axvline(intervention_idx, c='k', linestyle='--')
+            ax.fill_between(
+                inferences['cum_effects'].index,
+                inferences['cum_effects_lower'],
+                inferences['cum_effects_upper'],
+                facecolor='blue',
+                interpolate=True,
+                alpha=0.25
+            )
+            #ax.setp(ax.getxticklabels(), visible=True if n_panels == 2 else False)
+            ax.legend()
+        plt.show()
+
+
+           
+   
+      

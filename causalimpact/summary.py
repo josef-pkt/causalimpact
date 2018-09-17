@@ -29,7 +29,7 @@ from jinja2 import Template
 from causalimpact.misc import get_z_score
 
 
-_here = os.path.abspath(__file__)
+_here = os.path.dirname(os.path.abspath(__file__))
 summary_tmpl_path = os.path.join(_here, 'templates', 'summary')
 report_tmpl_path = os.path.join(_here, 'templates', 'report')
 
@@ -38,39 +38,42 @@ REPORT_TMPL = Template(open(report_tmpl_path).read())
 
 
 class Summary(object):
-    """Prepares final summary with causal impact results telling whether an effect has 
-    been identified in data or not.
+    """
+    Prepares final summary with causal impact results telling whether an effect has been
+    identified in data or not.
     """
     def __init__(self):
         self.summary_data = None
-        self.summary_tmpl = Template(SUMMARY_TMPL)
-        self.report_tmpl = Template(REPORT_TMPL)
+        self.summary_tmpl = SUMMARY_TMPL
+        self.report_tmpl = REPORT_TMPL
 
     def summary(self, output='summary'):
-        """Returns final results from causal impact analysis, such as absolute observed
+        """
+        Returns final results from causal impact analysis, such as absolute observed
         effect, the relative effect between prediction and observed variable, cumulative
         performances in post-intervention period among other metrics.
 
         Args
         ----
-          output: string, can be either "summary" or "report". The first is a simpler
-              output just informing general metrics such as expected absolute or relative
-              effect.
+          output: str.
+              Can be either "summary" or "report". The first is a simpler output just
+              informing general metrics such as expected absolute or relative effect.
 
         Returns
         -------
-          summary: string containing results of the causal impact analysis.
+          summary: str.
+              Contains results of the causal impact analysis.
 
         Raises
         ------
-          RuntimeError: if ``self.summary_data`` is None meaning the post inference
+          RuntimeError: if `self.summary_data` is None meaning the post inference
               compilation was not performed yet.
         """
         if self.summary_data is None:
             raise RuntimeError('Posterior inferences must be first computed before '
-                'running `summary`.')
+                'running summary.')
         if output not in {'summary', 'report'}:
-            raise ValueError('Please choose either ``summary`` or ``report`` for output.')
+            raise ValueError('Please choose either summary or report for output.')
         if output == 'summary':
             summary = SUMMARY_TMPL.render(
                 summary=self.summary_data.to_dict(),

@@ -20,8 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Computes posterior inferences related to post-intervention period of a time series
-based model."""
+"""
+Computes posterior inferences related to post-intervention period of a time series
+based model.
+"""
 
 import numpy as np
 import pandas as pd
@@ -32,30 +34,9 @@ from causalimpact.misc import unstandardize
 
 
 class Inferences(object):
-    """All computations related to the inference process of the post-intervention
+    """
+    All computations related to the inference process of the post-intervention
     prediction is handled through the methods implemented here.
-
-    Args
-    ----
-      inferences: pandas DataFrame with all the necessary information for running the
-          final analysis for causal impact. The columnas are:
-              cum_post_y: culmulative response ``y``.
-              preds: predictions for pre and post data.
-              preds_lower: lower boundary of predictions.
-              preds_upper: upper boundary for predictions.
-              cum_post_pred: cumulative of predictions in post data.
-              cum_post_pred_lower: cumulative of lower boundary predictions in post
-                  data.
-              cum_post_pred_upper: cumulative of upper boundary predictions in post
-                  data.
-              point_effects: the difference between predicted data and observed ``y``.
-              point_effects_lower: difference between lower predicted data and
-                  observed ``y``.
-              point_effects_upper: difference between upper predicted data and
-                  observed ``y``.
-              cum_effects: cumulative of point effects in post data.
-              cum_effects_lower: cumulative of lower point effects in post data.
-              cum_effects_upper: cumulative of upper point effects in post data.
     """
     def __init__(self, n_sims=1000):
         self._inferences = None
@@ -64,54 +45,63 @@ class Inferences(object):
 
     @property
     def inferences(self):
-        """Returns pandas DataFrame of inferred inferences for post-intervention analysis.
+        """
+        Returns pandas DataFrame of inferred inferences for post-intervention analysis.
         """
         return self._inferences
 
     @inferences.setter
     def inferences(self, value):
-        """Makes attribute ``inferences`` Read-Only for the client.
+        """
+        Makes attribute `inferences` Read-Only for the client.
 
         Args
         ----
-          value: pandas DataFrame with general information of the inferences analysis
-              performed in the post-intervention period.
+          value: pandas DataFrame.
+              General information of the inferences analysis performed in the
+              post-intervention period.
 
         Raises
         ------
-          AttributeError: if trying to set a new value to ``inferences`` had it already
-              received the posterior analysis computation."""
+          AttributeError: if trying to set a new value to `inferences` had it already
+              received the posterior analysis computation.
+        """
         if self._inferences is None:
             self._inferences = value
         else:
-            raise AttributeError('``inferences`` property is Read-Only')
+            raise AttributeError('inferences property is Read-Only')
 
     @property
     def p_value(self):
-        """Returns the computed `p-value` for the inference analysis performed in the
+        """
+        Returns the computed `p-value` for the inference analysis performed in the
         post-intervention period.
         """
         return self._p_value
 
     @p_value.setter
     def p_value(self, value):
-        """Sets value for `_p-value` just once and makes sure the value is Ready-Only.
+        """
+        Sets value for `_p-value` just once and makes sure the value is Ready-Only.
 
         Args
         ----
-          value: float ranging between 0 and 1.
+          value: float.
+              Ranges between 0 and 1.
 
         Raises
         ------
-          AttributeError: if trying to set a new value to ``p_value`` had it already
-              received the posterior analysis computation."""
+          AttributeError: if trying to set a new value to `p_value` had it already
+              received the posterior analysis computation.
+        """
         if self._p_value is None:
             self._p_value = value
         else:
             raise AttributeError('p_value attribute is Read-Only.')
 
     def _unstardardize(self, data):
-        """If input data was standardized, this method is used to bring back data to its
+        """
+        If input data was standardized, this method is used to bring back data to its
         original form. The parameter `self.mu_sig` from `main.BaseCausal` holds the values
         used for normalization (average and std, respectively). In case `self.mu_sig` is
         None, it means no standardization was applied; in this case we just return data.
@@ -119,52 +109,56 @@ class Inferences(object):
         Args
         ----
           self:
-            mu_sig: Tuple where first value is the mean and second is the standard
-                deviation used for normalization.
-          data: input vector to apply unstardization
+            mu_sig: tuple
+                First value is the mean and second is the standard deviation used for
+                normalization.
+          data: numpy.array
+              Input vector to apply unstardization.
 
         Returns
         -------
-          ``data`` if `self.mu_sig` is None; returns the unstandizated data otherwise.
+          numpy.array: `data` if `self.mu_sig` is None; the unstandizated data otherwise.
         """
         if self.mu_sig is None:
             return data
         return unstandardize(data, self.mu_sig) 
         
     def compile_posterior_inferences(self):
-        """Runs the posterior causal impact inference computation using the already
+        """
+        Runs the posterior causal impact inference computation using the already
         trained model.
 
         Args
         ----
           self:
-            trained_model: ``UnobservedComponentsResultsWrapper``.
+            trained_model: `UnobservedComponentsResultsWrapper`.
             pre_data: pandas DataFrame.
             post_data: pandas DataFrame.
             alpha: float.
-            mu_sig: tuple where first value is the mean used for standardization and second
-                value is the standard deviation.
+            mu_sig: tuple.
+                First value is the mean used for standardization and second value is the
+                standard deviation.
         """
         pre_predictor = self.trained_model.get_prediction()
-        post_predictor =self.trained_model.get_forecast(
+        post_predictor = self.trained_model.get_forecast(
             steps=len(self.post_data),
-            exog=post_data.iloc[:, 1].values,
+            exog=self.post_data.iloc[:, 1:].values,
             alpha=self.alpha
         )
-        pre_preds = self._unstardardize(pre_predictor.predicted_mean, self.mu_sig)
-        post_preds = self._unstardardize(post_predictor.predicted_mean, self.mu_sig)
+        pre_preds = self._unstardardize(pre_predictor.predicted_mean)
+        post_preds = self._unstardardize(post_predictor.predicted_mean)
 
         # Sets index properly
         pre_preds.index = self.pre_data.index
         post_preds.index = self.post_data.index
 
         # Confidence Intervals
-        pre_ci = self._unstardardize(pre_predictor.conf_int(alpha=self.alpha)
+        pre_ci = self._unstardardize(pre_predictor.conf_int(alpha=self.alpha))
         pre_preds_lower = pre_ci.iloc[:, 0] # Only valid from statsmodels 0.9.0
         pre_preds_upper = pre_ci.iloc[:, 1]
         post_ci = self._unstardardize(post_predictor.conf_int(alpha=self.alpha))
-        post_preds_lower = post_ci[:, 0]
-        post_preds_upper = post_ci[:, 1]
+        post_preds_lower = post_ci.iloc[:, 0]
+        post_preds_upper = post_ci.iloc[:, 1]
 
         # Sets index properly
         pre_preds_lower.index = self.pre_data.index
@@ -187,13 +181,17 @@ class Inferences(object):
         point_effects = self.data.iloc[:, 0] - preds
         point_effects_lower = self.data.iloc[:, 0] - preds_lower
         point_effects_upper = self.data.iloc[:, 0] - preds_upper
+        post_point_effects = self.post_data.iloc[:, 0] - preds
+        post_point_effects_lower = self.post_data.iloc[:, 0] - preds_lower
+        post_point_effects_upper = self.post_data.iloc[:, 0] - preds_upper
 
         # Cumulative Effects analysis
-        cum_effects_lower = np.cumsum(post_preds_lower)
-        cum_effects_upper = np.cumsum(post_preds_upper)
+        cum_effects = np.cumsum(post_point_effects)
+        cum_effects_lower = np.cumsum(post_point_effects_lower)
+        cum_effects_upper = np.cumsum(post_point_effects_upper)
         self.inferences = pd.concat(
             [
-                cum_post_y,
+                post_cum_y,
                 preds,
                 post_preds,
                 post_preds_lower,
@@ -209,20 +207,21 @@ class Inferences(object):
                 cum_effects,
                 cum_effects_lower,
                 cum_effects_upper
-            ]
+            ],
+            axis=1
         )
 
-        self.inferences.index = [
-            'cum_post_y',
+        self.inferences.columns = [
+            'post_cum_y',
             'preds',
             'post_preds',
             'post_preds_lower',
-            'post_preds_upper'
+            'post_preds_upper',
             'preds_lower',
             'preds_upper',
-            'cum_post_pred',
-            'cum_post_pred_lower',
-            'cum_post_pred_upper',
+            'post_cum_pred',
+            'post_cum_pred_lower',
+            'post_cum_pred_upper',
             'point_effects',
             'point_effects_lower',
             'point_effects_upper',
@@ -232,13 +231,14 @@ class Inferences(object):
         ]
 
     def summarize_posterior_inferences(self):
-        """After running the posterior inferences compilation, this method aggregates
+        """
+        After running the posterior inferences compilation, this method aggregates
         the results and gets the final interpretation for the causal impact results, such
         as what is the expected absolute impact of the given intervention.
 
         Raises
         ------
-          RuntimeError: if ``self.inferences`` is ``None``, meaning the inferences
+          RuntimeError: if `self.inferences` is `None`, meaning the inferences
               compilation was not processed yet.
         """
         infers = self.inferences
@@ -289,17 +289,27 @@ class Inferences(object):
             [rel_effect_upper, sum_rel_effect_upper]
         ]
         self.summary_data = pd.DataFrame(
-            summary,
+            summary_data,
             columns=['average', 'cumulative'],
-            index=['actual', 'predicted', 'predicted_lower', 'predicted_uppper', 
-                'abs_effect', 'abs_effect_lower', 'abs_effect_upper', 'rel_effect,'
-                'rel_effect_lower', 'rel_effect_upper']
+            index=[
+                'actual',
+                'predicted',
+                'predicted_lower',
+                'predicted_uppper', 
+                'abs_effect',
+                'abs_effect_lower',
+                'abs_effect_upper',
+                'rel_effect',
+                'rel_effect_lower',
+                'rel_effect_upper'
+            ]
         )
         # We also save the p-value which will be used in `summary` as well.
         self.p_value = self.compute_p_value()
 
     def compute_p_value(self, n_sims=1000):
-        """Computes the p-value for the hypothesis testing that there's signal in the
+        """
+        Computes the p-value for the hypothesis testing that there's signal in the
         observed data. The computation follows the same idea as the one implemented in R
         by Google which consists of simulating with the fitted parameters several time
         series for the post-intervention period and counting how many either surpass the
@@ -313,12 +323,14 @@ class Inferences(object):
 
         Args
         ----
-          n_sims: int representing how many simulations to run for computing the p-value.
+          n_sims: int.
+              Representing how many simulations to run for computing the p-value.
 
         Returns
         -------
-          p_value: float ranging between 0 and 1, represents the likelihood of obtaining
-              the observed data by random chance.
+          p_value: float.
+              Ranging between 0 and 1, represents the likelihood of obtaining the observed
+              data by random chance.
         """
         # For more information about the `trend` and how it works, please refer to:
         # https://www.statsmodels.org/dev/generated/statsmodels.tsa.statespace.structural.UnobservedComponents.html #noaq

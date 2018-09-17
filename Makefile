@@ -10,6 +10,6 @@ flake8:
 	pipenv run flake8 causalimpact
 
 coverage:
-	pipenv run py.test --cov-config .coveragerc --cov-report html --cov=causalimpact
+	pipenv run py.test -p no:warnings --cov-config .coveragerc --cov-report html --cov=causalimpact
 
 .PHONY: flake8 isort coverage

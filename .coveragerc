@@ -2,7 +2,9 @@
 branch = True
 include =
     causalimpact/*
-omit = tests/*
+omit =
+    tests/*
+    causalimpact/__version__.py 
 
 
 [report]
