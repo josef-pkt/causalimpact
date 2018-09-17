@@ -34,6 +34,7 @@ from causalimpact.inferences import Inferences
 from causalimpact.summary import Summary
 from causalimpact.misc import standardize
 
+
 class BaseCausal(Inferences, Summary):
     """
     Works as a container for attributes and methods that are used in the Causal
@@ -161,8 +162,8 @@ class CausalImpact(BaseCausal):
       >>> ci = CausalImpact(data, pre_period, post_period, model=ucm)
     """
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
-        checked_input = self._process_input_data(data, pre_period, post_period, model,
-                                                 alpha, **kwargs)
+        checked_input = self._process_input_data(
+            data, pre_period, post_period, model, alpha, **kwargs)
         super(CausalImpact, self).__init__(**checked_input)
         self.model_args = checked_input['model_args']
         self.model = checked_input['model']
@@ -246,8 +247,9 @@ class CausalImpact(BaseCausal):
               data.
         """
         data = self.pre_data if self.normed_pre_data is None else self.normed_pre_data
-        model = UnobservedComponents(data.iloc[:, 0], level='llevel',
-                                     exog=data.iloc[:, 1:])
+        y = data.iloc[:, 0]
+        X = data.iloc[:, 1:] if data.shape[1] > 1 else None
+        model = UnobservedComponents(endog=y, level='llevel', exog=X)
         return model
 
     def _process_input_data(self, data, pre_period, post_period, model, alpha, **kwargs):
@@ -295,6 +297,7 @@ class CausalImpact(BaseCausal):
         processed_data = self._format_input_data(data)
         pre_data, post_data = self._process_pre_post_data(processed_data, pre_period,
                                                           post_period)
+        alpha = self._process_alpha(alpha)
         model_args = self._process_kwargs(**kwargs)
         if model:
             model = self._process_input_model(model)
@@ -320,22 +323,20 @@ class CausalImpact(BaseCausal):
 
         Raises
         ------
-          ValueError: if `y` is None.
-                      if values in `y` are Null.
+          ValueError: if values in `y` are Null.
                       if less than 3 (three) non-null values in `y` (as in this case
                           we can't even train a model).
                       if `y` is constant (in this case it doesn't make much sense to
                         make predictions as the time series doesn't change in the training
                         phase.
         """
-        if y is None:
-            raise ValueError('Input response y cannot be None')
         if np.all(y.isna()):
-            raise ValueError('Input response cannot have just Null values')
+            raise ValueError('Input response cannot have just Null values.')
         if y.notna().values.sum() < 3:
-            raise ValueError('Input response must have more than 3 points at least')
+            raise ValueError('Input response must have more than 3 non-null '
+                'points at least.')
         if y.std(skipna=True, ddof=0) == 0:
-            raise ValueError('Input response cannot be constant')
+            raise ValueError('Input response cannot be constant.')
         
     def _process_alpha(self, alpha):
         """
@@ -363,6 +364,7 @@ class CausalImpact(BaseCausal):
             raise ValueError(
                 'alpha must range between 0 (zero) and 1 (one) inclusive.'
             )
+        return alpha
 
     def _process_input_model(self, model):
         """
@@ -385,24 +387,13 @@ class CausalImpact(BaseCausal):
                       if model doesn't have attribute data or it's not set.
         """
         if not isinstance(model, UnobservedComponents):
-            raise ValueError(
-                'Input model must be of type UnobservedComponents.'
-            )
-        try:
-            if model.level is None:
-                raise ValueError('Model must have level attribute set.')
-        except AttributeError:
-            raise ValueError('Model must have attribute level.')
-        try:
-            if model.exog is None:
-                raise ValueError('Model must have exog attribute set.')
-        except AttributeError:
-            raise ValueError('Model must have attribute exog.')
-        try:
-            if model.data is None:
-                raise ValueError('Model must have data attribute set.')
-        except AttributeError:
-            raise ValueError('Model must have attribute exog.')
+            raise ValueError('Input model must be of type UnobservedComponents.')
+        if not model.level:
+            raise ValueError('Model must have level attribute set.')
+        if model.exog is None:
+            raise ValueError('Model must have exog attribute set.')
+        if model.data is None:
+            raise ValueError('Model must have data attribute set.')
         return model
 
     def _process_kwargs(self, **kwargs):
@@ -427,7 +418,7 @@ class CausalImpact(BaseCausal):
         if standardize is None:
             standardize = True # Default behaviour is to set standardization to True.
         if not isinstance(standardize, bool):
-            raise ValueException('standardize argument must be of type bool')
+            raise ValueError('Standardize argument must be of type bool.')
         return {
             'standardize': standardize
         }
@@ -455,22 +446,18 @@ class CausalImpact(BaseCausal):
         if not isinstance(data, pd.DataFrame):
             try:
                 data = pd.DataFrame(data)
-            except ValueError as err:
+            except ValueError:
                 raise ValueError(
-                    'Input data is not valid. Cause of error: {err}'.format(
-                        err=str(err))
+                    'Could not transform input data to pandas DataFrame.'
                 )
         self._validate_y(data.iloc[:, 0])
         # Must contain only numeric values
         if not data.applymap(np.isreal).values.all():
-            raise ValueError('Input data must contain only numeric values')
-        # Must have at least 3 points of observed data
-        if data.shape[0] < 3:
-            raise ValueError('Input data must have more than 3 points')
+            raise ValueError('Input data must contain only numeric values.')
         # Covariates cannot have NAN values
         if data.shape[1] > 1:
-            if data.isna().values.all():
-                raise ValueError('Input data cannot have NAN values')
+            if data.iloc[:, 1:].isna().values.any():
+                raise ValueError('Input data cannot have NAN values.')
         return data
 
     def _process_pre_post_data(self, data, pre_period, post_period):
@@ -489,12 +476,13 @@ class CausalImpact(BaseCausal):
         -------
           result: list.
               First value is pre-intervention data and second value is post-intervention.
+
         Raises
         ------
           ValueError: if pre_period last value is bigger than post intervention period.
         """
-        pre_period = self._process_period(pre_period, data.index)
-        post_period = self._process_period(post_period, data.index)
+        pre_period = self._process_period(pre_period, data)
+        post_period = self._process_period(post_period, data)
 
         if pre_period[1] > post_period[0]:
             raise ValueError(
@@ -502,17 +490,19 @@ class CausalImpact(BaseCausal):
                 'data. Please fix your pre_period value to cover at most one point less '
                 'from when the intervention happened.'
             )
+        if pre_period[1] < pre_period[0]:
+            raise ValueError('pre_period last number must be bigger than its first.')
+        if pre_period[1] - pre_period[0] < 3:
+            raise ValueError('pre_period must span at least 3 time points.')
         if post_period[1] < post_period[0]:
             raise ValueError('post_period last number must be bigger than its first.')
-        if pre_period[1] < pre_period[0]:
-            raise ValueError('pre_period last number must be bigger than its first.') 
         result = [
             data.iloc[pre_period[0]: pre_period[1], :],
             data.iloc[post_period[0]: post_period[1], :]
         ]
         return result
 
-    def _process_period(self, period, data_index):
+    def _process_period(self, period, data):
         """
         Validates period inputs.
 
@@ -520,12 +510,13 @@ class CausalImpact(BaseCausal):
         ----
           period: list.
               Containing two values that can be either `int` or `str`.
-          data_index: `RangeIndex`, `DatetimeIndex`
-              Index of input data such as `RangeIndex` from pandas.
+          data: pandas DataFrame.
+              Input Causal Impact data.
 
         Returns
         -------
-          period: validated period list.
+          period: list.
+              Validated period list.
 
         Raises
         ------
@@ -537,29 +528,27 @@ class CausalImpact(BaseCausal):
             raise ValueError('Input period must be of type list.')
         if len(period) != 2:
             raise ValueError(
-                'period must have two values regarding the beginning and end of '
-                'the pre and post intervention data'
+                'Period must have two values regarding the beginning and end of '
+                'the pre and post intervention data.'
             )
         none_args = [d for d in period if d is None]
         if none_args:
-            raise ValueError('Input period cannot have `None` values')
+            raise ValueError('Input period cannot have `None` values.')
         if not (
             (isinstance(period[0], int) and isinstance(period[1], int)) or
             (isinstance(period[1], str) and isinstance(period[1], str))
         ):
-            raise ValueError('Input must contain either int or str')
+            raise ValueError('Input must contain either int or str.')
         # If period contains strings, try to convert to datetime. ``data_index`` should
         # also be of DatetimeIndex type.
         if isinstance(period[0], str):
-            if isinstance(data_index, DatetimeIndex):
+            if isinstance(data.index, DatetimeIndex):
                 period = self._convert_str_period_to_int(period, data)
             else:
                 raise ValueError(
                     'If input period is string then input data must have index '
                     'of type DatetimeIndex.'
                 )
-        if period[1] - period[0] < 3:
-            raise ValueError('pre_period must span at least 3 time points')
         return period
 
     def _convert_str_period_to_int(self, period, data):
@@ -586,7 +575,7 @@ class CausalImpact(BaseCausal):
                 offset = data.index.get_loc(date)
                 result.append(offset)
             except KeyError:
-                raise ValueError('{date} is not preset in data index'.format(
+                raise ValueError('{date} is not preset in data index.'.format(
                     date=date)
                 )
         return result

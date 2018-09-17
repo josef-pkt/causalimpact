@@ -27,7 +27,7 @@ import pandas as pd
 import pytest
 from pandas.util.testing import assert_almost_equal
 
-from causalimpact.misc import standardize, unstandardize
+from causalimpact.misc import standardize, unstandardize, get_z_score
 
 
 def test_basic_standardize():
@@ -58,3 +58,8 @@ def test_standardize_w_various_distinct_inputs():
 def test_standardize_raises_single_input():
     with pytest.raises(ValueError):
         standardize(pd.DataFrame([1]))
+
+
+def test_get_z_score():
+    assert get_z_score(0.5) == 0.
+    assert round(get_z_score(0.9177), 2) == 1.39

@@ -335,10 +335,11 @@ class Inferences(object):
         # For more information about the `trend` and how it works, please refer to:
         # https://www.statsmodels.org/dev/generated/statsmodels.tsa.statespace.structural.UnobservedComponents.html #noaq
         trend = self.model.trend_specification
-        model = UnobservedComponents(np.zeros(len(self.post_data)), level=trend,
-                                     exog=self.post_data.iloc[:, 1:])
+        y = np.zeros(len(self.post_data))
+        X = self.post_data.iloc[:, 1:] if self.post_data.shape[1] > 1 else None
+        model = UnobservedComponents(y, level=trend, exog=X)
         # `params` is related to the parameters found when fitting the Kalman filter
-        # to describe the trained time series.
+        # from the observed time series.
         params = self.trained_model.params
         predicted_state = self.trained_model.predicted_state[..., -1]
         predicted_state_cov = self.trained_model.predicted_state_cov[..., -1]
