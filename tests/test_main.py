@@ -27,10 +27,10 @@ Tests for module main.py
 
 import pytest
 import numpy as np
-from numpy.testing import assert_array_equal, assert_array_less
+from numpy.testing import assert_array_equal
 import pandas as pd
 from pandas.core.indexes.range import RangeIndex
-from pandas.util.testing import assert_frame_equal
+from pandas.util.testing import assert_frame_equal, assert_series_equal
 from statsmodels.tsa.statespace.structural import UnobservedComponents
 from statsmodels.tsa.statespace.structural import UnobservedComponentsResultsWrapper
 from causalimpact import CausalImpact
@@ -393,6 +393,28 @@ def test_periods_validation(rand_data, date_rand_data):
         ci = CausalImpact(date_rand_data, ['20170101', '20180110'],
                           ['20180111', '20180120'])
     assert str(excinfo.value) == ('20170101 is not preset in data index.')
+
+
+def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
+    ci = CausalImpact(rand_data, pre_int_period, post_int_period)
+
+    pre_data = rand_data.iloc[pre_int_period[0]: pre_int_period[1], :]
+    post_data = rand_data.iloc[post_int_period[0]: post_int_period[1], :]
+
+    normed_pre_data, (mu, sig) = standardize(pre_data)
+    normed_post_data = (post_data - mu) / sig
+
+    assert_series_equal(
+        ci.inferences['post_cum_y'].iloc[post_int_period[0]: post_int_period[1]],
+        np.cumsum(post_data.iloc[:, 0])
+    )
+
+
+
+
+
+
+
 
 
 

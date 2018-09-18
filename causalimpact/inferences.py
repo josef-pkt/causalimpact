@@ -67,6 +67,8 @@ class Inferences(object):
               received the posterior analysis computation.
         """
         if self._inferences is None:
+            if not isinstance(value, pd.DataFrame):
+                raise ValueError('inferences must be of type pandas DataFrame')
             self._inferences = value
         else:
             raise AttributeError('inferences property is Read-Only')
@@ -95,6 +97,8 @@ class Inferences(object):
               received the posterior analysis computation.
         """
         if self._p_value is None:
+            if value < 0 or value > 1:
+                raise ValueError('p-value must range between 0 and 1')
             self._p_value = value
         else:
             raise AttributeError('p_value attribute is Read-Only.')
