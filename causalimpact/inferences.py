@@ -143,12 +143,15 @@ class Inferences(object):
                 First value is the mean used for standardization and second value is the
                 standard deviation.
         """
+        exog = self.post_data if self.mu_sig is None else self.normed_post_data
+
         pre_predictor = self.trained_model.get_prediction()
         post_predictor = self.trained_model.get_forecast(
             steps=len(self.post_data),
-            exog=self.post_data.iloc[:, 1:].values,
+            exog=exog.iloc[:, 1:],
             alpha=self.alpha
         )
+
         pre_preds = self._unstardardize(pre_predictor.predicted_mean)
         post_preds = self._unstardardize(post_predictor.predicted_mean)
 
@@ -299,7 +302,7 @@ class Inferences(object):
                 'actual',
                 'predicted',
                 'predicted_lower',
-                'predicted_uppper', 
+                'predicted_upper', 
                 'abs_effect',
                 'abs_effect_lower',
                 'abs_effect_upper',

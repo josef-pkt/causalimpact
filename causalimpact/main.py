@@ -481,24 +481,24 @@ class CausalImpact(BaseCausal):
         ------
           ValueError: if pre_period last value is bigger than post intervention period.
         """
-        pre_period = self._process_period(pre_period, data)
-        post_period = self._process_period(post_period, data)
+        checked_pre_period = self._process_period(pre_period, data)
+        checked_post_period = self._process_period(post_period, data)
 
-        if pre_period[1] > post_period[0]:
+        if checked_pre_period[1] > checked_post_period[0]:
             raise ValueError(
                 'Values in training data cannot be present in the post-intervention '
                 'data. Please fix your pre_period value to cover at most one point less '
                 'from when the intervention happened.'
             )
-        if pre_period[1] < pre_period[0]:
+        if checked_pre_period[1] < checked_pre_period[0]:
             raise ValueError('pre_period last number must be bigger than its first.')
-        if pre_period[1] - pre_period[0] < 3:
+        if checked_pre_period[1] - checked_pre_period[0] < 3:
             raise ValueError('pre_period must span at least 3 time points.')
-        if post_period[1] < post_period[0]:
+        if checked_post_period[1] < checked_post_period[0]:
             raise ValueError('post_period last number must be bigger than its first.')
         result = [
-            data.iloc[pre_period[0]: pre_period[1], :],
-            data.iloc[post_period[0]: post_period[1], :]
+            data.loc[pre_period[0]: pre_period[1], :],
+            data.loc[post_period[0]: post_period[1], :]
         ]
         return result
 
