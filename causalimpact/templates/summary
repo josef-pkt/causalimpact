@@ -1,19 +1,18 @@
 {% macro CI(alpha) %}{{(((1 - alpha) * 100) | string).rstrip('0').rstrip('.')}}% CI{% endmacro -%}
 {% macro SD(lower, upper, z_score) %}{{((upper - lower) / (2 * z_score)) | round(1)}}{% endmacro -%}
-
 Posterior Inference {Causal Impact}
-                          Average       Cumulative
-Actual                    {{summary.average.actual | round(1)}}             {{summary.cumulative.actual | round(1)}}
-Prediction (s.d.)         {{summary.average.predicted | round(1)}} ({{SD(summary.average.predicted_lower, summary.average.predicted_upper, z_score)}})       {{summary.cumulative.predicted | round(1)}} ({{SD(summary.cumulative.predicted_lower, summary.cumulative.predicted_upper, z_score)}})
-{{CI(alpha)}}                    [{{summary.average.predicted_lower | round(1)}}, {{summary.average.predicted_upper | round(1)}}]    [{{summary.cumulative.predicted_lower | round(1)}}, {{summary.cumulative.predicted_upper | round(1)}}]
+                          Average            Cumulative
+Actual                    {{summary.average.actual | round(1)}}                {{summary.cumulative.actual | round(1)}}
+Prediction (s.d.)         {{summary.average.predicted | round(1)}} ({{SD(summary.average.predicted_lower, summary.average.predicted_upper, z_score)}})          {{summary.cumulative.predicted | round(1)}} ({{SD(summary.cumulative.predicted_lower, summary.cumulative.predicted_upper, z_score)}})
+{{CI(alpha)}}                    [{{summary.average.predicted_lower | round(1)}}, {{summary.average.predicted_upper | round(1)}}]         [{{summary.cumulative.predicted_lower | round(1)}}, {{summary.cumulative.predicted_upper | round(1)}}]
 
-Absolute effect (s.d.)    {{summary.average.abs_effect | round(1)}} ({{SD(summary.average.abs_effect_lower, summary.average.abs_effect_upper, z_score)}})     {{summary.cumulative.abs_effect | round(1)}} ({{SD(summary.cumulative.abs_effect_lower, summary.cumulative.abs_effect_upper, z_score)}})
-{{CI(alpha)}}                    [{{summary.average.abs_effect_lower | round(1)}}, {{summary.average.abs_effect_upper | round(1)}}]   [{{summary.cumulative.abs_effect_lower | round(1)}}, {{summary.cumulative.abs_effect_upper | round(1)}}]
+Absolute effect (s.d.)    {{summary.average.abs_effect | round(1)}} ({{SD(summary.average.abs_effect_lower, summary.average.abs_effect_upper, z_score)}})          {{summary.cumulative.abs_effect | round(1)}} ({{SD(summary.cumulative.abs_effect_lower, summary.cumulative.abs_effect_upper, z_score)}})
+{{CI(alpha)}}                    [{{summary.average.abs_effect_lower | round(1)}}, {{summary.average.abs_effect_upper | round(1)}}]         [{{summary.cumulative.abs_effect_lower | round(1)}}, {{summary.cumulative.abs_effect_upper | round(1)}}]
 
-Relative effect (s.d.)    {{summary.average.rel_effect | round(1)}}% ({{SD(summary.average.rel_effect_lower, summary.average.rel_effect_upper, z_score)}}%)     {{summary.cumulative.rel_effect | round(1)}}% ({{SD(summary.cumulative.rel_effect_lower, summary.cumulative.rel_effect_upper, z_score)}}%)
-{{CI(alpha)}}                    [{{summary.average.rel_effect_lower | round(1)}}%, {{summary.average.rel_effect_upper | round(1)}}%]      [{{summary.cumulative.rel_effect_lower | round(1)}}%, {{summary.cumulative.rel_effect_upper | round(1)}}%]
+Relative effect (s.d.)    {{'{0:.0%}'.format(summary.average.rel_effect)}} ({{'{0:.0%}'.format(SD(summary.average.rel_effect_lower, summary.average.rel_effect_upper, z_score)|float)}})          {{'{0:.0%}'.format(summary.cumulative.rel_effect)}} ({{'{0:.0%}'.format(SD(summary.cumulative.rel_effect_lower, summary.cumulative.rel_effect_upper, z_score)|float)}})
+{{CI(alpha)}}                    [{{'{0:.0%}'.format(summary.average.rel_effect_lower)}}, {{'{0:.0%}'.format(summary.average.rel_effect_upper)}}]         [{{'{0:.0%}'.format(summary.cumulative.rel_effect_lower)}}, {{'{0:.0%}'.format(summary.cumulative.rel_effect_upper)}}]
 
 Posterior tail-area probability p: {{p_value}}
-Posterior prob. of a causal effect: {{(1 - p_value) * 100 | round(2)}}%
+Posterior prob. of a causal effect: {{'{0:.0%}'.format(1 - p_value)}}
 
-For more details, please run the command: impact.summary(output='report')
+For more details run the command: impact.summary(output='report')

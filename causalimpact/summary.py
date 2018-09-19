@@ -78,12 +78,13 @@ class Summary(object):
             summary = SUMMARY_TMPL.render(
                 summary=self.summary_data.to_dict(),
                 alpha=self.alpha,
-                z_score=get_z_score(1 - self.alpha),
+                z_score=get_z_score(1 - self.alpha / 2.),
                 p_value=self.p_value
             )
         else:
             summary = REPORT_TMPL.render(
                 summary=self.summary_data.to_dict(),
-                alpha=self.alpha
+                alpha=self.alpha,
+                p_value=self.p_value
             )
         return summary
