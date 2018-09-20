@@ -32,10 +32,11 @@ from statsmodels.tsa.statespace.structural import UnobservedComponents
 
 from causalimpact.inferences import Inferences
 from causalimpact.summary import Summary
+from causalimpact.plot import Plot
 from causalimpact.misc import standardize
 
 
-class BaseCausal(Inferences, Summary):
+class BaseCausal(Inferences, Summary, Plot):
     """
     Works as a container for attributes and methods that are used in the Causal
     Impact algorithm. Offers support for inferences, summary report and plotting
@@ -123,7 +124,7 @@ class CausalImpact(BaseCausal):
 
     Returns
     -------
-      CausalImpact object.
+      CausalImpact object with infereces already processed.
 
     Examples:
     ---------
@@ -214,7 +215,7 @@ class CausalImpact(BaseCausal):
           value: `UnobservedComponents`.
         """
         if value is None:
-            self._model = self.construct_default_model()
+            self._model = self._construct_default_model()
         else:
             self._model = value
 
@@ -235,10 +236,10 @@ class CausalImpact(BaseCausal):
         data related to predictions, point effects and cumulative responses will be
         processed here.
         """
-        self.compile_posterior_inferences()
-        self.summarize_posterior_inferences()
+        self._compile_posterior_inferences()
+        self._summarize_posterior_inferences()
 
-    def construct_default_model(self):
+    def _construct_default_model(self):
         """Constructs default local level unobserved states model with input data.
 
         Returns

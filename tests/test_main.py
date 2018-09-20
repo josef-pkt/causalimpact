@@ -32,6 +32,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 import pandas as pd
 from pandas.core.indexes.range import RangeIndex
 from pandas.util.testing import assert_frame_equal, assert_series_equal
+from statsmodels.tsa.arima_process import ArmaProcess
 from statsmodels.tsa.statespace.structural import UnobservedComponents
 from statsmodels.tsa.statespace.structural import UnobservedComponentsResultsWrapper
 from causalimpact import CausalImpact
@@ -699,3 +700,18 @@ def test_default_causal_inferences_w_date(date_rand_data, pre_str_period,
     assert ci.p_value is not None
     assert ci.p_value > 0
     assert ci.p_value < 1
+
+
+def test_default_causal_cto_w_signal(pre_int_period, post_int_period):
+    ar = np.r_[1, 0.9]
+    ma = np.array([1])
+    arma_process = ArmaProcess(ar, ma)
+
+    X = 100 + arma_process.generate_sample(nsample=100)
+    X = X.reshape(-1, 1)
+    y = 1.2 * X + np.random.normal(size=(100, 1))
+    y += 1
+    data = np.concatenate([y, X])
+    ci = CausalImpact(data, pre_int_period, post_int_period)
+
+    assert ci.p_value < 0.05

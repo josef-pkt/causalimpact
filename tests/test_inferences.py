@@ -63,8 +63,3 @@ def test_inferences_read_only(inferer):
 def test_inferences_raises_invalid_input(inferer):
     with pytest.raises(ValueError):
         inferer.inferences = 1
-
-
-def test_summarization_raises(inferer):
-    with pytest.raises(RuntimeError):
-        inferer.summarize_posterior_inferences()

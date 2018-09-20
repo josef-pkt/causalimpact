@@ -127,7 +127,7 @@ class Inferences(object):
             return data
         return unstandardize(data, self.mu_sig) 
         
-    def compile_posterior_inferences(self):
+    def _compile_posterior_inferences(self):
         """
         Runs the posterior causal impact inference computation using the already
         trained model.
@@ -237,20 +237,13 @@ class Inferences(object):
             'cum_effects_upper'
         ]
 
-    def summarize_posterior_inferences(self):
+    def _summarize_posterior_inferences(self):
         """
         After running the posterior inferences compilation, this method aggregates
         the results and gets the final interpretation for the causal impact results, such
         as what is the expected absolute impact of the given intervention.
-
-        Raises
-        ------
-          RuntimeError: if `self.inferences` is `None`, meaning the inferences
-              compilation was not processed yet.
         """
         infers = self.inferences
-        if infers is None:
-            raise RuntimeError('First run inferences compilation.')
 
         # Compute the mean of metrics.
         mean_post_y = self.post_data.iloc[:, 0].mean()
@@ -265,21 +258,21 @@ class Inferences(object):
         sum_post_pred_upper = infers['post_preds_upper'].sum()
 
         # Causal Impact analysis metrics.
-        abs_effect = mean_post_pred - mean_post_y
-        abs_effect_lower = mean_post_pred_lower - mean_post_y
-        abs_effect_upper = mean_post_pred_upper - mean_post_y
+        abs_effect =  mean_post_y - mean_post_pred
+        abs_effect_lower = mean_post_y - mean_post_pred_lower
+        abs_effect_upper =  mean_post_y - mean_post_pred_upper
 
-        sum_abs_effect = sum_post_pred - sum_post_y
-        sum_abs_effect_lower = sum_post_pred_lower - sum_post_y
-        sum_abs_effect_upper = sum_post_pred_upper - sum_post_y
+        sum_abs_effect = sum_post_y - sum_post_pred
+        sum_abs_effect_lower = sum_post_y - sum_post_pred_lower
+        sum_abs_effect_upper = sum_post_y - sum_post_pred_upper
 
-        rel_effect = abs_effect / mean_post_y
-        rel_effect_lower = abs_effect_lower / mean_post_y
-        rel_effect_upper = abs_effect_upper / mean_post_y
+        rel_effect = abs_effect / mean_post_pred
+        rel_effect_lower = abs_effect_lower / mean_post_pred
+        rel_effect_upper = abs_effect_upper / mean_post_pred
 
-        sum_rel_effect = sum_abs_effect / sum_post_y
-        sum_rel_effect_lower = sum_abs_effect_lower / sum_post_y
-        sum_rel_effect_upper = sum_abs_effect_upper / sum_post_y
+        sum_rel_effect = sum_abs_effect / sum_post_pred
+        sum_rel_effect_lower = sum_abs_effect_lower / sum_post_pred
+        sum_rel_effect_upper = sum_abs_effect_upper / sum_post_pred
 
         # Prepares all this data into a DataFrame for later retrieval, such as when
         # running the `summary` method.
@@ -312,9 +305,9 @@ class Inferences(object):
             ]
         )
         # We also save the p-value which will be used in `summary` as well.
-        self.p_value = self.compute_p_value()
+        self.p_value = self._compute_p_value()
 
-    def compute_p_value(self, n_sims=1000):
+    def _compute_p_value(self, n_sims=1000):
         """
         Computes the p-value for the hypothesis testing that there's signal in the
         observed data. The computation follows the same idea as the one implemented in R

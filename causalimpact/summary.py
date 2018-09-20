@@ -20,7 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Summarizes performance information inferred in post-inferences compilation process."""
+"""
+Summarizes performance information inferred in post-inferences compilation process.
+"""
+
 
 import os
 
@@ -44,8 +47,6 @@ class Summary(object):
     """
     def __init__(self):
         self.summary_data = None
-        self.summary_tmpl = SUMMARY_TMPL
-        self.report_tmpl = REPORT_TMPL
 
     def summary(self, output='summary'):
         """

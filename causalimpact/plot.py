@@ -20,7 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Plots the analysis obtained in causal impact algorithm."""
+"""
+Plots the analysis obtained in causal impact algorithm.
+"""
+
 
 import matplotlib.pyplot as plt
 plt.figure(figsize=(15, 12))
@@ -94,8 +97,3 @@ class Plot(object):
             #ax.setp(ax.getxticklabels(), visible=True if n_panels == 2 else False)
             ax.legend()
         plt.show()
-
-
-           
-   
-      
