@@ -518,36 +518,36 @@ def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
     assert_allclose(ci.summary_data['average']['predicted_upper'], mean_post_pred_upper)
     assert_allclose(ci.summary_data['cumulative']['predicted_upper'], sum_post_pred_upper)
 
-    abs_effect = mean_post_pred - mean_post_y
-    sum_abs_effect = sum_post_pred - sum_post_y
+    abs_effect = mean_post_y - mean_post_pred
+    sum_abs_effect = sum_post_y - sum_post_pred
     assert_allclose(ci.summary_data['average']['abs_effect'], abs_effect)
     assert_allclose(ci.summary_data['cumulative']['abs_effect'], sum_abs_effect)
 
-    abs_effect_lower = mean_post_pred_lower - mean_post_y
-    sum_abs_effect_lower = sum_post_pred_lower - sum_post_y
+    abs_effect_lower = mean_post_y - mean_post_pred_lower
+    sum_abs_effect_lower = sum_post_y - sum_post_pred_lower
     assert_allclose(ci.summary_data['average']['abs_effect_lower'], abs_effect_lower)
     assert_allclose(ci.summary_data['cumulative']['abs_effect_lower'],
                     sum_abs_effect_lower)
 
-    abs_effect_upper = mean_post_pred_upper - mean_post_y
-    sum_abs_effect_upper = sum_post_pred_upper - sum_post_y
+    abs_effect_upper = mean_post_y - mean_post_pred_upper
+    sum_abs_effect_upper = sum_post_y - sum_post_pred_upper
     assert_allclose(ci.summary_data['average']['abs_effect_upper'], abs_effect_upper)
     assert_allclose(ci.summary_data['cumulative']['abs_effect_upper'],
                     sum_abs_effect_upper)
 
-    rel_effect = abs_effect / mean_post_y
-    sum_abs_effect = sum_abs_effect / sum_post_y
+    rel_effect = abs_effect / mean_post_pred
+    sum_abs_effect = sum_abs_effect / sum_post_pred
     assert_allclose(ci.summary_data['average']['rel_effect'], rel_effect)
     assert_allclose(ci.summary_data['cumulative']['rel_effect'], sum_abs_effect)
 
-    rel_effect_lower = abs_effect_lower / mean_post_y
-    sum_abs_effect_lower = sum_abs_effect_lower / sum_post_y
+    rel_effect_lower = abs_effect_lower / mean_post_pred
+    sum_abs_effect_lower = sum_abs_effect_lower / sum_post_pred
     assert_allclose(ci.summary_data['average']['rel_effect_lower'], rel_effect_lower)
     assert_allclose(ci.summary_data['cumulative']['rel_effect_lower'],
                     rel_effect_lower)
 
-    rel_effect_upper = abs_effect_upper / mean_post_y
-    sum_abs_effect_upper = sum_abs_effect_upper / sum_post_y
+    rel_effect_upper = abs_effect_upper / mean_post_pred
+    sum_abs_effect_upper = sum_abs_effect_upper / sum_post_pred
     assert_allclose(ci.summary_data['average']['rel_effect_upper'], rel_effect_upper)
     assert_allclose(ci.summary_data['cumulative']['rel_effect_upper'],
                     rel_effect_upper)
@@ -663,36 +663,36 @@ def test_default_causal_inferences_w_date(date_rand_data, pre_str_period,
     assert_allclose(ci.summary_data['average']['predicted_upper'], mean_post_pred_upper)
     assert_allclose(ci.summary_data['cumulative']['predicted_upper'], sum_post_pred_upper)
 
-    abs_effect = mean_post_pred - mean_post_y
-    sum_abs_effect = sum_post_pred - sum_post_y
+    abs_effect = mean_post_y - mean_post_pred
+    sum_abs_effect = sum_post_y - sum_post_pred
     assert_allclose(ci.summary_data['average']['abs_effect'], abs_effect)
     assert_allclose(ci.summary_data['cumulative']['abs_effect'], sum_abs_effect)
 
-    abs_effect_lower = mean_post_pred_lower - mean_post_y
-    sum_abs_effect_lower = sum_post_pred_lower - sum_post_y
+    abs_effect_lower = mean_post_y - mean_post_pred_lower
+    sum_abs_effect_lower = sum_post_y - sum_post_pred_lower
     assert_allclose(ci.summary_data['average']['abs_effect_lower'], abs_effect_lower)
     assert_allclose(ci.summary_data['cumulative']['abs_effect_lower'],
                     sum_abs_effect_lower)
 
-    abs_effect_upper = mean_post_pred_upper - mean_post_y
-    sum_abs_effect_upper = sum_post_pred_upper - sum_post_y
+    abs_effect_upper = mean_post_y - mean_post_pred_upper
+    sum_abs_effect_upper = sum_post_y - sum_post_pred_upper
     assert_allclose(ci.summary_data['average']['abs_effect_upper'], abs_effect_upper)
     assert_allclose(ci.summary_data['cumulative']['abs_effect_upper'],
                     sum_abs_effect_upper)
 
-    rel_effect = abs_effect / mean_post_y
-    sum_abs_effect = sum_abs_effect / sum_post_y
+    rel_effect = abs_effect / mean_post_pred
+    sum_abs_effect = sum_abs_effect / sum_post_pred
     assert_allclose(ci.summary_data['average']['rel_effect'], rel_effect)
     assert_allclose(ci.summary_data['cumulative']['rel_effect'], sum_abs_effect)
 
-    rel_effect_lower = abs_effect_lower / mean_post_y
-    sum_abs_effect_lower = sum_abs_effect_lower / sum_post_y
+    rel_effect_lower = abs_effect_lower / mean_post_pred
+    sum_abs_effect_lower = sum_abs_effect_lower / sum_post_pred
     assert_allclose(ci.summary_data['average']['rel_effect_lower'], rel_effect_lower)
     assert_allclose(ci.summary_data['cumulative']['rel_effect_lower'],
                     rel_effect_lower)
 
-    rel_effect_upper = abs_effect_upper / mean_post_y
-    sum_abs_effect_upper = sum_abs_effect_upper / sum_post_y
+    rel_effect_upper = abs_effect_upper / mean_post_pred
+    sum_abs_effect_upper = sum_abs_effect_upper / sum_post_pred
     assert_allclose(ci.summary_data['average']['rel_effect_upper'], rel_effect_upper)
     assert_allclose(ci.summary_data['cumulative']['rel_effect_upper'],
                     rel_effect_upper)

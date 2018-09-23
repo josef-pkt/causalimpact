@@ -25,9 +25,6 @@ Plots the analysis obtained in causal impact algorithm.
 """
 
 
-import matplotlib.pyplot as plt
-plt.figure(figsize=(15, 12))
-
 class Plot(object):
     """Takes all the vectors and final analysis performed in the post-period inference
     to plot final graphics.
@@ -43,34 +40,40 @@ class Plot(object):
         ------
           RuntimeError: if inferences were not computed yet.
         """
+        plt = self._get_plotter()
+        plt.figure(figsize=(15, 12))
         if self.summary_data is None:
             raise RuntimeError('Please first run inferences before plotting results')
-
-        inferences = self.inferences
-        intervention_idx = self.post_data.index.get_loc(self.post_period[0])
+        # We throw away the first point as there's no analysis to be performed on this
+        # value.
+        inferences = self.inferences.iloc[1:, :]
+        intervention_idx = inferences.index.get_loc(self.post_period[0])
         n_panels = len(panels)
-        fig = plt.figure()
         ax = plt.subplot(n_panels, 1, 1)
+        idx = 1
 
         if 'original' in panels:
             ax.plot(self.data.iloc[:, 0], 'k', label='y')
             ax.plot(inferences['preds'], 'b--', label='Predicted')
-            ax.axvline(intervention_idx, c='k', linestyle='--')
+            ax.axvline(inferences.index[intervention_idx], c='gray', linestyle='--')
             ax.fill_between(
                 inferences['preds'].index,
                 inferences['preds_lower'],
-                inferences['preds_uppwer'],
+                inferences['preds_upper'],
                 facecolor='blue',
                 interpolate=True,
                 alpha=0.25
             )
-            #ax.setp(ax.get_xticklabels(), visible=True if n_panels == 1 else False)
+            ax.grid(True, linestyle='--')
             ax.legend()
+            if idx != n_panels:
+                plt.setp(ax.get_xticklabels(), visible=False)
+            idx += 1
 
         if 'pointwise' in panels:
-            ax = plt.subplot(n_panels, 1, 2, sharex=ax)
+            ax = plt.subplot(n_panels, 1, idx, sharex=ax)
             ax.plot(inferences['point_effects'], 'b--', label='Point Effects')
-            ax.axvline(intervention_idx, c='k', linestyle='--')
+            ax.axvline(inferences.index[intervention_idx], c='gray', linestyle='--')
             ax.fill_between(
                 inferences['point_effects'].index,
                 inferences['point_effects_lower'],
@@ -79,13 +82,17 @@ class Plot(object):
                 interpolate=True,
                 alpha=0.25
             )
-            #ax.setp(ax.getxticklabels(), visible=True if n_panels == 2 else False)
+            ax.axhline(y=0, color='k', linestyle='--')
+            ax.grid(True, linestyle='--')
             ax.legend()
+            if idx != n_panels:
+                plt.setp(ax.get_xticklabels(), visible=False)
+            idx += 1
 
         if 'cumulative' in panels:
-            ax = plt.subplot(n_panels, 1, 3, sharex=ax)
+            ax = plt.subplot(n_panels, 1, idx, sharex=ax)
             ax.plot(inferences['cum_effects'], 'b--', label='Cumulative Effect')
-            ax.axvline(intervention_idx, c='k', linestyle='--')
+            ax.axvline(inferences.index[intervention_idx], c='gray', linestyle='--')
             ax.fill_between(
                 inferences['cum_effects'].index,
                 inferences['cum_effects_lower'],
@@ -94,6 +101,19 @@ class Plot(object):
                 interpolate=True,
                 alpha=0.25
             )
-            #ax.setp(ax.getxticklabels(), visible=True if n_panels == 2 else False)
+            ax.grid(True, linestyle='--')
+            ax.axhline(y=0, color='k', linestyle='--')
             ax.legend()
         plt.show()
+
+    def _get_plotter(self):
+        """Work around method to import run unittests in environments where matplotlib
+        is not installed or not working properly.
+
+        Returns
+        -------
+          plotter: `matplotlib.pyplot`.
+        """
+        import matplotlib.pyplot as plt
+        return plt
+ 

@@ -16,8 +16,8 @@ we would have expected a sum of 9.3.
 The 90% CI interval of this prediction is [8.3, 9.3].
 
 The above results are given in terms of absolute number. In relative
-terms, the response variable showed a decrease of -34%. The 90% CI
-interval of this percentage is [-43%, -23%].
+terms, the response variable showed a decrease of -34.3%. The 90% CI
+interval of this percentage is [-43.4%, -23.4%].
 
 This means that the negative effect observed during the intervention
 period is statistically significant.

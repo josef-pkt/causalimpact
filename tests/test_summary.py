@@ -89,7 +89,7 @@ def test_summary_raises(summarizer):
 def test_output_summary_1(summary_data, path, summarizer):
     summarizer.summary_data = summary_data
     summarizer.alpha = 0.1
-    summarizer.p_value = 0.5
+    summarizer.p_value = 0.459329
 
     result = summarizer.summary()
     expected = open(os.path.join(path, 'test_summary_output_1')).read().strip()
@@ -101,7 +101,9 @@ def test_summary_1(summary_data, path, summarizer):
     summarizer.summary_data = summary_data
     summarizer.alpha = 0.1
     summarizer.p_value = 0.5
-
+    summary_data['average']['abs_effect_lower'] = 30.39
+    summary_data['average']['abs_effect_upper'] = -10.29
+ 
     result = summarizer.summary(output='report')
     expected = open(os.path.join(path, 'test_summary_1')).read().strip()
     assert result == expected
@@ -112,7 +114,9 @@ def test_summary_2(summary_data, path, summarizer):
     summarizer.summary_data = summary_data
     summarizer.alpha = 0.1
     summarizer.p_value = 0.05
-
+    summary_data['average']['rel_effect_lower'] = 0.434
+    summary_data['average']['rel_effect_upper'] = 0.234
+ 
     result = summarizer.summary(output='report')
     expected = open(os.path.join(path, 'test_summary_2')).read().strip()
     assert result == expected

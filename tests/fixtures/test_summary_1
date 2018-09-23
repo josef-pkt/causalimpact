@@ -5,7 +5,7 @@ The 90% CI interval of this counterfactual prediction is [3.3, 6.3].
 Subtracting this prediction from the observed response yields
 an estimate of the causal effect the intervention had on the
 response variable. This effect is 3.3 with a 90% CI interval of
-[2.3, 6.3]. For a discussion of the significance of this effect,
+[-10.3, 30.4]. For a discussion of the significance of this effect,
 see below.
 
 Summing up the individual data points during the post-intervention
@@ -16,8 +16,8 @@ we would have expected a sum of 9.3.
 The 90% CI interval of this prediction is [8.3, 9.3].
 
 The above results are given in terms of absolute number. In relative
-terms, the response variable showed an increase of 12%. The 90% CI
-interval of this percentage is [14%, 34%].
+terms, the response variable showed an increase of 12.3%. The 90% CI
+interval of this percentage is [14.3%, 34.3%].
 
 This means that the positive effect observed during the intervention
 period is statistically significant and unlikely to be due to random

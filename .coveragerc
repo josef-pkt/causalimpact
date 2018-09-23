@@ -5,6 +5,7 @@ include =
 omit =
     tests/*
     causalimpact/__version__.py 
+    causalimpact/plot.py
 
 
 [report]

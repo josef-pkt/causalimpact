@@ -16,8 +16,8 @@ we would have expected a sum of 9.3.
 The 90% CI interval of this prediction is [8.3, 9.3].
 
 The above results are given in terms of absolute number. In relative
-terms, the response variable showed an increase of 12%. The 90% CI
-interval of this percentage is [14%, 34%].
+terms, the response variable showed an increase of 12.3%. The 90% CI
+interval of this percentage is [23.4%, 43.4%].
 
 This means that the positive effect observed during the intervention
 period is statistically significant and unlikely to be due to random

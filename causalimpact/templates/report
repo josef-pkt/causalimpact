@@ -9,7 +9,7 @@ The {{CI(alpha)}} interval of this counterfactual prediction is [{{summary.avera
 Subtracting this prediction from the observed response yields
 an estimate of the causal effect the intervention had on the
 response variable. This effect is {{summary.average.abs_effect | round(1)}} with a {{CI(alpha)}} interval of
-[{{summary.average.abs_effect_lower | round(1)}}, {{summary.average.abs_effect_upper | round(1)}}]. For a discussion of the significance of this effect,
+{{[summary.average.abs_effect_lower | round(1), summary.average.abs_effect_upper | round(1)] | sort}}. For a discussion of the significance of this effect,
 see below.
 
 Summing up the individual data points during the post-intervention
@@ -17,11 +17,11 @@ period (which can only sometimes be meaningfully interpreted), the
 response variable had an overall value of {{summary.cumulative.actual | round(1)}}.
 {% if detected_sig %}By contrast, had {% else %}Had{% endif %} the intervention not taken place,
 we would have expected a sum of {{summary.cumulative.predicted| round(1)}}.
-The {{CI(alpha)}} interval of this prediction is [{{summary.cumulative.predicted_lower | round(1)}}, {{summary.cumulative.predicted_upper | round(1)}}].
+The {{CI(alpha)}} interval of this prediction is {{[summary.cumulative.predicted_lower | round(1), summary.cumulative.predicted_upper | round(1)]|sort}}.
 
 The above results are given in terms of absolute number. In relative
-terms, the response variable showed {% if positive_sig %}an increase of{% else %}a decrease of{% endif %} {{'{0:.0%}'.format(summary.average.rel_effect)}}. The {{CI(alpha)}}
-interval of this percentage is [{{'{0:.0%}'.format(summary.average.rel_effect_lower)}}, {{'{0:.0%}'.format(summary.average.rel_effect_upper)}}].
+terms, the response variable showed {% if positive_sig %}an increase of{% else %}a decrease of{% endif %} {{'{0:.1%}'.format(summary.average.rel_effect)}}. The {{CI(alpha)}}
+interval of this percentage is [{{'{0:.1%}'.format([summary.average.rel_effect_lower, summary.average.rel_effect_upper] | min)}}, {{'{0:.1%}'.format([summary.average.rel_effect_upper, summary.average.rel_effect_lower]|max)}}].
 {% if detected_sig and positive_sig %}
 This means that the positive effect observed during the intervention
 period is statistically significant and unlikely to be due to random
