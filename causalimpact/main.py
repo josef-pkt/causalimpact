@@ -31,9 +31,9 @@ from pandas.core.indexes.datetimes import DatetimeIndex
 from statsmodels.tsa.statespace.structural import UnobservedComponents
 
 from causalimpact.inferences import Inferences
-from causalimpact.summary import Summary
-from causalimpact.plot import Plot
 from causalimpact.misc import standardize
+from causalimpact.plot import Plot
+from causalimpact.summary import Summary
 
 
 class BaseCausal(Inferences, Summary, Plot):
@@ -335,10 +335,10 @@ class CausalImpact(BaseCausal):
             raise ValueError('Input response cannot have just Null values.')
         if y.notna().values.sum() < 3:
             raise ValueError('Input response must have more than 3 non-null '
-                'points at least.')
+                             'points at least.')
         if y.std(skipna=True, ddof=0) == 0:
             raise ValueError('Input response cannot be constant.')
-        
+
     def _process_alpha(self, alpha):
         """
         Asserts input `alpha` is appropriate to be used in the model.
@@ -417,7 +417,7 @@ class CausalImpact(BaseCausal):
         """
         standardize = kwargs.get('standardize')
         if standardize is None:
-            standardize = True # Default behaviour is to set standardization to True.
+            standardize = True  # Default behaviour is to set standardization to True.
         if not isinstance(standardize, bool):
             raise ValueError('Standardize argument must be of type bool.')
         return {

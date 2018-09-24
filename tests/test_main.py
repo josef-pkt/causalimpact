@@ -26,18 +26,18 @@ of this file.
 """
 
 
-import pytest
 import numpy as np
-from numpy.testing import assert_array_equal, assert_allclose
 import pandas as pd
+import pytest
+from numpy.testing import assert_allclose, assert_array_equal
 from pandas.core.indexes.range import RangeIndex
 from pandas.util.testing import assert_frame_equal, assert_series_equal
 from statsmodels.tsa.arima_process import ArmaProcess
-from statsmodels.tsa.statespace.structural import UnobservedComponents
-from statsmodels.tsa.statespace.structural import UnobservedComponentsResultsWrapper
+from statsmodels.tsa.statespace.structural import (UnobservedComponents,
+                                                   UnobservedComponentsResultsWrapper)
+
 from causalimpact import CausalImpact
 from causalimpact.misc import standardize
-
 
 
 def test_default_causal_cto(rand_data, pre_int_period, post_int_period):

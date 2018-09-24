@@ -27,7 +27,7 @@ import pandas as pd
 import pytest
 from pandas.util.testing import assert_almost_equal
 
-from causalimpact.misc import standardize, unstandardize, get_z_score
+from causalimpact.misc import get_z_score, standardize, unstandardize
 
 
 def test_basic_standardize():

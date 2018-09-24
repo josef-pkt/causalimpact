@@ -27,8 +27,8 @@ Tests for summary.py module.
 
 import os
 
-import pytest
 import pandas as pd
+import pytest
 
 from causalimpact.summary import Summary
 

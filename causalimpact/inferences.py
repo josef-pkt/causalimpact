@@ -27,7 +27,6 @@ based model.
 
 import numpy as np
 import pandas as pd
-
 from statsmodels.tsa.statespace.structural import UnobservedComponents
 
 from causalimpact.misc import unstandardize
@@ -125,8 +124,8 @@ class Inferences(object):
         """
         if self.mu_sig is None:
             return data
-        return unstandardize(data, self.mu_sig) 
-        
+        return unstandardize(data, self.mu_sig)
+
     def _compile_posterior_inferences(self):
         """
         Runs the posterior causal impact inference computation using the already
@@ -161,7 +160,7 @@ class Inferences(object):
 
         # Confidence Intervals
         pre_ci = self._unstardardize(pre_predictor.conf_int(alpha=self.alpha))
-        pre_preds_lower = pre_ci.iloc[:, 0] # Only valid from statsmodels 0.9.0
+        pre_preds_lower = pre_ci.iloc[:, 0]  # Only valid from statsmodels 0.9.0
         pre_preds_upper = pre_ci.iloc[:, 1]
         post_ci = self._unstardardize(post_predictor.conf_int(alpha=self.alpha))
         post_preds_lower = post_ci.iloc[:, 0]
@@ -173,7 +172,7 @@ class Inferences(object):
         post_preds_lower.index = self.post_data.index
         post_preds_upper.index = self.post_data.index
 
-       # Concatenations
+        # Concatenations
         preds = pd.concat([pre_preds, post_preds])
         preds_lower = pd.concat([pre_preds_lower, post_preds_lower])
         preds_upper = pd.concat([pre_preds_upper, post_preds_upper])
@@ -258,9 +257,9 @@ class Inferences(object):
         sum_post_pred_upper = infers['post_preds_upper'].sum()
 
         # Causal Impact analysis metrics.
-        abs_effect =  mean_post_y - mean_post_pred
+        abs_effect = mean_post_y - mean_post_pred
         abs_effect_lower = mean_post_y - mean_post_pred_lower
-        abs_effect_upper =  mean_post_y - mean_post_pred_upper
+        abs_effect_upper = mean_post_y - mean_post_pred_upper
 
         sum_abs_effect = sum_post_y - sum_post_pred
         sum_abs_effect_lower = sum_post_y - sum_post_pred_lower
@@ -295,7 +294,7 @@ class Inferences(object):
                 'actual',
                 'predicted',
                 'predicted_lower',
-                'predicted_upper', 
+                'predicted_upper',
                 'abs_effect',
                 'abs_effect_lower',
                 'abs_effect_upper',
@@ -333,7 +332,7 @@ class Inferences(object):
               data by random chance.
         """
         # For more information about the `trend` and how it works, please refer to:
-        # https://www.statsmodels.org/dev/generated/statsmodels.tsa.statespace.structural.UnobservedComponents.html #noaq
+        # https://www.statsmodels.org/dev/generated/statsmodels.tsa.statespace.structural.UnobservedComponents.html
         trend = self.model.trend_specification
         y = np.zeros(len(self.post_data))
         X = self.post_data.iloc[:, 1:] if self.post_data.shape[1] > 1 else None

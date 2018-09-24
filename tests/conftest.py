@@ -24,9 +24,9 @@
 General fixtures for tests.
 """
 
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
 
 
 @pytest.fixture
@@ -61,5 +61,3 @@ def pre_str_period():
 @pytest.fixture
 def post_str_period():
     return ['20180411', '20180719']
-
-

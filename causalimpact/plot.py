@@ -116,4 +116,3 @@ class Plot(object):
         """
         import matplotlib.pyplot as plt
         return plt
- 

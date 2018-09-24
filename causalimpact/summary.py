@@ -31,7 +31,6 @@ from jinja2 import Template
 
 from causalimpact.misc import get_z_score
 
-
 _here = os.path.dirname(os.path.abspath(__file__))
 summary_tmpl_path = os.path.join(_here, 'templates', 'summary')
 report_tmpl_path = os.path.join(_here, 'templates', 'report')
@@ -72,7 +71,7 @@ class Summary(object):
         """
         if self.summary_data is None:
             raise RuntimeError('Posterior inferences must be first computed before '
-                'running summary.')
+                               'running summary.')
         if output not in {'summary', 'report'}:
             raise ValueError('Please choose either summary or report for output.')
         if output == 'summary':
