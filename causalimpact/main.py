@@ -138,7 +138,7 @@ class CausalImpact(BaseCausal):
       >>> arma_process = ArmaProcess(ar, ma)
       >>> X = 100 + arma_process.generate_sample(nsample=100)
       >>> y = 1.2 * X + np.random.normal(size=100)
-      >>> data = np.concatenate((y.reshape(-1, 1), X.reshape(-1, 1)), axis=1)
+      >>> data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
       >>> pre_period = [0, 70]
       >>> post_period = [70, 100]
 
@@ -540,6 +540,13 @@ class CausalImpact(BaseCausal):
             (isinstance(period[1], str) and isinstance(period[1], str))
         ):
             raise ValueError('Input must contain either int or str.')
+        # Tests whether the input period is indeed present in the input data index.
+        for point in period:
+            if point not in data.index:
+                raise ValueError("{point} not present in input data index.".format(
+                    point=point
+                    )
+                )
         # If period contains strings, try to convert to datetime. ``data_index`` should
         # also be of DatetimeIndex type.
         if isinstance(period[0], str):
@@ -565,18 +572,9 @@ class CausalImpact(BaseCausal):
         -------
           period: list of int.
               Where each value is the correspondent integer based value in `data` index.
-
-        Raises
-        ------
-          ValueError: if values in `period` are not present in `data`.
         """
         result = []
         for date in period:
-            try:
-                offset = data.index.get_loc(date)
-                result.append(offset)
-            except KeyError:
-                raise ValueError('{date} is not preset in data index.'.format(
-                    date=date)
-                )
+            offset = data.index.get_loc(date)
+            result.append(offset)
         return result

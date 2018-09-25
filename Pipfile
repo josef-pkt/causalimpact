@@ -10,9 +10,9 @@ isort = "*"
 tox = "*"
 ipython = "*"
 pytest-coverage = "*"
+jupyter = "*"
 
 [packages]
 causalimpact = {path = ".", editable = true}
 matplotlib = "*"
 "jinja2" = "*"
-mock = "*"

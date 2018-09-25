@@ -399,21 +399,33 @@ def test_periods_validation(rand_data, date_rand_data):
     assert str(excinfo.value) == 'Input must contain either int or str.'
 
     with pytest.raises(ValueError) as excinfo:
+        ci = CausalImpact(rand_data, [-2, 10], [11, 20])
+    assert str(excinfo.value) == (
+        '-2 not present in input data index.'
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        ci = CausalImpact(rand_data, [0, 10], [11, 2000])
+    assert str(excinfo.value) == (
+        '2000 not present in input data index.'
+    )
+
+    with pytest.raises(ValueError) as excinfo:
         ci = CausalImpact(rand_data, ['20180101', '20180110'],
                           ['20180111', '20180130'])
     assert str(excinfo.value) == (
-        'If input period is string then input data must have index of type DatetimeIndex.'
+        '20180101 not present in input data index.'
     )
 
     with pytest.raises(ValueError) as excinfo:
         ci = CausalImpact(date_rand_data, ['20180101', '20180110'],
                           ['20180111', '20200130'])
-    assert str(excinfo.value) == ('20200130 is not preset in data index.')
+    assert str(excinfo.value) == ('20200130 not present in input data index.')
 
     with pytest.raises(ValueError) as excinfo:
         ci = CausalImpact(date_rand_data, ['20170101', '20180110'],
                           ['20180111', '20180120'])
-    assert str(excinfo.value) == ('20170101 is not preset in data index.')
+    assert str(excinfo.value) == ('20170101 not present in input data index.')
 
 
 def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
@@ -426,8 +438,10 @@ def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
     normed_post_data = (post_data - mu) / sig
     mu, sig = mu[0], sig[0]
 
-    model = UnobservedComponents(endog=normed_pre_data.iloc[:, 0], level='llevel',
-                                 exog=normed_pre_data.iloc[:, 1:])
+    model = UnobservedComponents(endog=normed_pre_data.iloc[:, 0],
+                                 level='llevel',
+                                 exog=normed_pre_data.iloc[:, 1:]
+    )
     f_model = model.fit()
     pre_predictor = f_model.get_prediction()
     post_predictor = f_model.get_forecast(
@@ -436,7 +450,9 @@ def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
     init_nan_vec = pd.Series([np.nan] * (pre_int_period[1] + 1),
                                 index=np.arange(pre_int_period[1] + 1))
 
-    assert ci.inferences['post_cum_y'].iloc[-1] == np.cumsum(post_data['y']).iloc[-1]
+    assert ci.inferences['post_cum_y'].iloc[-1] == np.cumsum(
+        post_data['y']
+    ).iloc[-1]
 
     pre_preds = pre_predictor.predicted_mean * sig + mu
     pre_ci = pre_predictor.conf_int()
@@ -457,10 +473,12 @@ def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
     post_preds_upper = post_ci.iloc[:, 1] * sig + mu
     post_preds_lower_complete = pd.concat([init_nan_vec, post_preds_lower])
     post_preds_lower_complete.name = 'post_preds_lower'
-    assert_series_equal(post_preds_lower_complete, ci.inferences['post_preds_lower'])
+    assert_series_equal(post_preds_lower_complete,
+                        ci.inferences['post_preds_lower'])
     post_preds_upper_complete = pd.concat([init_nan_vec, post_preds_upper])
     post_preds_upper_complete.name = 'post_preds_upper'
-    assert_series_equal(post_preds_upper_complete, ci.inferences['post_preds_upper'])
+    assert_series_equal(post_preds_upper_complete,
+                        ci.inferences['post_preds_upper'])
 
     preds_lower = pd.concat([pre_preds_lower, post_preds_lower])
     preds_lower.name = 'preds_lower'
@@ -469,10 +487,16 @@ def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
     preds_upper = pd.concat([pre_preds_upper, post_preds_upper])
     preds_upper.name = 'preds_upper'
     assert_series_equal(preds_upper, ci.inferences['preds_upper'])
-    assert ci.inferences['post_cum_pred'].iloc[-1] == np.cumsum(post_preds).iloc[-1]
+    assert ci.inferences['post_cum_pred'].iloc[-1] == np.cumsum(
+        post_preds
+    ).iloc[-1]
 
-    ci.inferences['post_cum_pred_lower'].iloc[-1] == np.cumsum(post_preds_lower).iloc[-1]
-    ci.inferences['post_cum_pred_upper'].iloc[-1] == np.cumsum(post_preds_upper).iloc[-1]
+    ci.inferences['post_cum_pred_lower'].iloc[-1] == np.cumsum(
+        post_preds_lower
+    ).iloc[-1]
+    ci.inferences['post_cum_pred_upper'].iloc[-1] == np.cumsum(
+        post_preds_upper
+    ).iloc[-1]
 
     point_effects = rand_data.iloc[:, 0] - preds
     point_effects.name = 'point_effects'
@@ -480,14 +504,18 @@ def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
 
     point_effects_lower = rand_data.iloc[:, 0] - preds_lower
     point_effects_lower.name = 'point_effects_lower'
-    assert_series_equal(point_effects_lower, ci.inferences['point_effects_lower'])
+    assert_series_equal(point_effects_lower,
+                        ci.inferences['point_effects_lower'])
     
     point_effects_upper = rand_data.iloc[:, 0] - preds_upper
     point_effects_upper.name = 'point_effects_upper'
-    assert_series_equal(point_effects_upper, ci.inferences['point_effects_upper'])
+    assert_series_equal(point_effects_upper,
+                        ci.inferences['point_effects_upper'])
 
     post_point_effects = post_data.iloc[:, 0] - post_preds
-    assert ci.inferences['cum_effects'].iloc[-1] == np.cumsum(post_point_effects).iloc[-1]
+    assert ci.inferences['cum_effects'].iloc[-1] == np.cumsum(
+        post_point_effects
+    ).iloc[-1]
  
     post_point_effects_lower = post_data.iloc[:, 0] - post_preds_lower
     assert ci.inferences['cum_effects_lower'].iloc[-1] == np.cumsum(
@@ -510,8 +538,10 @@ def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
 
     mean_post_pred_lower = post_preds_lower.mean()
     sum_post_pred_lower = post_preds_lower.sum()
-    assert_allclose(ci.summary_data['average']['predicted_lower'], mean_post_pred_lower)
-    assert_allclose(ci.summary_data['cumulative']['predicted_lower'], sum_post_pred_lower)
+    assert_allclose(ci.summary_data['average']['predicted_lower'],
+                    mean_post_pred_lower)
+    assert_allclose(ci.summary_data['cumulative']['predicted_lower'],
+                    sum_post_pred_lower)
 
     mean_post_pred_upper = post_preds_upper.mean()
     sum_post_pred_upper = post_preds_upper.sum()
