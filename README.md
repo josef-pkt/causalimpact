@@ -10,7 +10,7 @@ The model makes as assumption (which is recommended to be confirmed in your data
 
 The model is more commonly used to infer the impact that marketing interventions have on businesses such as the expected revenue associated to a given campaign or even to assert more precisely the revenue a given channel brings in by completely turning it off (also known as "hold-out" tests). It's important to note though that the model can be extensively used in different areas and subjects; any intervention on time series data can potentially be modeled and inferences be made upon observed and predicted data.
 
-Please refer to *getting started* in the `examples` folder for more information.
+Please refer to <a href=http://nbviewer.jupyter.org/github/dafiti/causalimpact/blob/14aa71977fe89a62b4adb95532bc838d3956fcc0/examples/getting_started.ipynb>getting started</a> in the `examples` folder for more information.
 
 ## Instalation
     pip install pycausalimpact
