@@ -139,8 +139,8 @@ class CausalImpact(BaseCausal):
       >>> X = 100 + arma_process.generate_sample(nsample=100)
       >>> y = 1.2 * X + np.random.normal(size=100)
       >>> data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
-      >>> pre_period = [0, 70]
-      >>> post_period = [70, 100]
+      >>> pre_period = [0, 69]
+      >>> post_period = [70, 99]
 
       >>> ci = CausalImpact(data, pre_period, post_period)
       >>> ci.summary()
@@ -164,7 +164,8 @@ class CausalImpact(BaseCausal):
     """
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
         checked_input = self._process_input_data(
-            data, pre_period, post_period, model, alpha, **kwargs)
+            data, pre_period, post_period, model, alpha, **kwargs
+        )
         super(CausalImpact, self).__init__(**checked_input)
         self.model_args = checked_input['model_args']
         self.model = checked_input['model']

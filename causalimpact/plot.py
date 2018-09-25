@@ -29,19 +29,22 @@ class Plot(object):
     """Takes all the vectors and final analysis performed in the post-period inference
     to plot final graphics.
     """
-    def plot(self, panels=['original', 'pointwise', 'cumulative']):
+    def plot(self, panels=['original', 'pointwise', 'cumulative'], figsize=(15, 12)):
         """Plots inferences results related to causal impact analysis.
 
         Args
         ----
-          panels: list, indicates which plot should be considered in the plot.
+          panels: list.
+            Indicates which plot should be considered in the graphics.
+          figsize: tuple.
+            Changes the size of the graphics plotted.
 
         Raises
         ------
           RuntimeError: if inferences were not computed yet.
         """
         plt = self._get_plotter()
-        plt.figure(figsize=(15, 12))
+        plt.figure(figsize=figsize)
         if self.summary_data is None:
             raise RuntimeError('Please first run inferences before plotting results')
         # We throw away the first point as there's no analysis to be performed on this
@@ -55,7 +58,7 @@ class Plot(object):
         if 'original' in panels:
             ax.plot(self.data.iloc[:, 0], 'k', label='y')
             ax.plot(inferences['preds'], 'b--', label='Predicted')
-            ax.axvline(inferences.index[intervention_idx], c='gray', linestyle='--')
+            ax.axvline(inferences.index[intervention_idx], c='k', linestyle='--')
             ax.fill_between(
                 inferences['preds'].index,
                 inferences['preds_lower'],
@@ -73,7 +76,7 @@ class Plot(object):
         if 'pointwise' in panels:
             ax = plt.subplot(n_panels, 1, idx, sharex=ax)
             ax.plot(inferences['point_effects'], 'b--', label='Point Effects')
-            ax.axvline(inferences.index[intervention_idx], c='gray', linestyle='--')
+            ax.axvline(inferences.index[intervention_idx], c='k', linestyle='--')
             ax.fill_between(
                 inferences['point_effects'].index,
                 inferences['point_effects_lower'],
@@ -92,7 +95,7 @@ class Plot(object):
         if 'cumulative' in panels:
             ax = plt.subplot(n_panels, 1, idx, sharex=ax)
             ax.plot(inferences['cum_effects'], 'b--', label='Cumulative Effect')
-            ax.axvline(inferences.index[intervention_idx], c='gray', linestyle='--')
+            ax.axvline(inferences.index[intervention_idx], c='k', linestyle='--')
             ax.fill_between(
                 inferences['cum_effects'].index,
                 inferences['cum_effects_lower'],
@@ -107,8 +110,8 @@ class Plot(object):
         plt.show()
 
     def _get_plotter(self):
-        """Work around method to import run unittests in environments where matplotlib
-        is not installed or not working properly.
+        """As some environments do not have matplotlib then we import the library through
+        this method which prevents import exceptions.
 
         Returns
         -------

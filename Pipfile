@@ -5,7 +5,7 @@ name = "pypi"
 
 [dev-packages]
 pytest = "*"
-"flake8" = "*"
+flake8 = "*"
 isort = "*"
 tox = "*"
 ipython = "*"
@@ -14,5 +14,6 @@ jupyter = "*"
 
 [packages]
 causalimpact = {path = ".", editable = true}
+statsmodels = "*"
 matplotlib = "*"
-"jinja2" = "*"
+jinja2 = "*"
