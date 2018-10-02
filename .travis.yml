@@ -1,0 +1,14 @@
+sudo: false
+language: python
+install:
+  - make
+  - pip install coveralls
+cache: pip
+jobs:
+  include:
+    - stage: tests
+      python: 3.6
+      script:
+        - make coverage
+after_success:
+  - coveralls
