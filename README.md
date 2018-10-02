@@ -1,5 +1,5 @@
-# Causal Impact
-This repository is a Python version of [Google's Causal Impact](https://github.com/google/CausalImpact) model implemented in R with all functionalities fully ported and tested. As far as results goes both should be quite similar despite the different techniques used on each one (in R package the fitting process is based on Markov Chain Monte Carlo procedure whereas in this package the model is fit by adapting a Kalman Filter as implemented in the `statsmodels` package).
+# Causal Impact [![Build Status](https://travis-ci.com/dafiti/causalimpact.svg?branch=master)](https://travis-ci.com/dafiti/causalimpact) [![Coverage Status](https://coveralls.io/repos/github/dafiti/causalimpact/badge.svg?branch=master)](https://coveralls.io/github/dafiti/causalimpact?branch=master)
+This repository is a Python version of [Google's Causal Impact](https://github.com/google/CausalImpact) model with all functionalities fully ported and tested.
 
 ## How it works
 The main goal of the algorithm is to infer  the expected effect a given intervention (or any action) had on some response variable by analyzing differences between expected and observed time series data.
@@ -27,7 +27,31 @@ or (recommended):
 ## Getting Started
 We recommend this [presentation](https://www.youtube.com/watch?v=GTgZfCltMm8) by Kay Brodersen (one of the creators of the causal impact implementation in R).
 
-We also created this introductory ipython notebook with examples of how to use the package.
+We also created this introductory [ipython notebook](https://github.com/dafiti/causalimpact/blob/master/examples/getting_started.ipynb) with examples of how to use the package.
 
+### Simple Example
+Here's a simple example (which can also be found in the original Google's R implementation) running in python:
+```python
+import numpy as np
+from statsmodels.tsa.arima_process import ArmaProcess
+from causalimpact import CausalImpact
+
+
+np.random.seed(12345)
+ar = np.r_[1, 0.9]
+ma = np.array([1])
+arma_process = ArmaProcess(ar, ma)
+
+X = 100 + arma_process.generate_sample(nsample=100)
+y = 1.2 * X + np.random.normal(size=100)
+data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
+pre_period = [0, 69]
+post_period = [70, 99]
+
+ci = CausalImpact(data, pre_period, post_period)
+
+print(ci.summary())
+ci.plot()
+```
 ## Contributing, Bugs, Questions
 Contributions are more than welcome! If you want to propose new changes, fix bugs or improve something feel free to fork the repository and send us a Pull Request. You can also open new `Issues` for reporting bugs and general problems.
