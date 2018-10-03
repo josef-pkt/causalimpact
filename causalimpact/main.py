@@ -548,16 +548,8 @@ class CausalImpact(BaseCausal):
                     point=point
                     )
                 )
-        # If period contains strings, try to convert to datetime. ``data_index`` should
-        # also be of DatetimeIndex type.
         if isinstance(period[0], str):
-            if isinstance(data.index, DatetimeIndex):
-                period = self._convert_str_period_to_int(period, data)
-            else:
-                raise ValueError(
-                    'If input period is string then input data must have index '
-                    'of type DatetimeIndex.'
-                )
+            period = self._convert_str_period_to_int(period, data)
         return period
 
     def _convert_str_period_to_int(self, period, data):
