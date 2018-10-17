@@ -55,5 +55,7 @@ ci = CausalImpact(data, pre_period, post_period)
 print(ci.summary())
 ci.plot()
 ```
+![alt text](https://raw.githubusercontent.com/dafiti/causalimpact/master/examples/ci_plot.png)
+
 ## Contributing, Bugs, Questions
 Contributions are more than welcome! If you want to propose new changes, fix bugs or improve something feel free to fork the repository and send us a Pull Request. You can also open new `Issues` for reporting bugs and general problems.
