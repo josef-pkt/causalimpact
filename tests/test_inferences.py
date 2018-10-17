@@ -69,6 +69,7 @@ def test_inferences_raises_invalid_input(inferer):
 
 
 def test_default_causal_cto_w_positive_signal():
+    np.random.seed(1)
     ar = np.r_[1, 0.9]
     ma = np.array([1])
     arma_process = ArmaProcess(ar, ma)
@@ -81,6 +82,7 @@ def test_default_causal_cto_w_positive_signal():
 
 
 def test_causal_cto_w_positive_signal_no_standardization():
+    np.random.seed(1)
     ar = np.r_[1, 0.9]
     ma = np.array([1])
     arma_process = ArmaProcess(ar, ma)
@@ -93,6 +95,7 @@ def test_causal_cto_w_positive_signal_no_standardization():
 
 
 def test_default_causal_cto_w_negative_signal():
+    np.random.seed(1)
     ar = np.r_[1, 0.9]
     ma = np.array([1])
     arma_process = ArmaProcess(ar, ma)
@@ -105,6 +108,7 @@ def test_default_causal_cto_w_negative_signal():
 
 
 def test_causal_cto_w_negative_signal_no_standardization():
+    np.random.seed(1)
     ar = np.r_[1, 0.9]
     ma = np.array([1])
     arma_process = ArmaProcess(ar, ma)
@@ -117,6 +121,7 @@ def test_causal_cto_w_negative_signal_no_standardization():
 
 
 def test_causal_cto_w_negative_signal_no_standardization():
+    np.random.seed(1)
     ar = np.r_[1, 0.9]
     ma = np.array([1])
     arma_process = ArmaProcess(ar, ma)
@@ -129,6 +134,7 @@ def test_causal_cto_w_negative_signal_no_standardization():
 
 
 def test_default_causal_cto_no_signal():
+    np.random.seed(1)
     ar = np.r_[1, 0.9]
     ma = np.array([1])
     arma_process = ArmaProcess(ar, ma)
@@ -140,6 +146,7 @@ def test_default_causal_cto_no_signal():
 
 
 def test_lower_upper_percentile():
+    np.random.seed(1)
     ar = np.r_[1, 0.9]
     ma = np.array([1])
     arma_process = ArmaProcess(ar, ma)
