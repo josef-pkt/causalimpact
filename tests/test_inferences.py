@@ -20,9 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import numpy as np
 import pandas as pd
 import pytest
+from statsmodels.tsa.arima_process import ArmaProcess
 
+from causalimpact import CausalImpact
 from causalimpact.inferences import Inferences
 
 
@@ -63,3 +66,85 @@ def test_inferences_read_only(inferer):
 def test_inferences_raises_invalid_input(inferer):
     with pytest.raises(ValueError):
         inferer.inferences = 1
+
+
+def test_default_causal_cto_w_positive_signal():
+    ar = np.r_[1, 0.9]
+    ma = np.array([1])
+    arma_process = ArmaProcess(ar, ma)
+    X = 100 + arma_process.generate_sample(nsample=100)
+    y = 1.2 * X + np.random.normal(size=(100))
+    y[70:] += 1
+    data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
+    ci = CausalImpact(data, [0, 69], [70, 99])
+    assert ci.p_value < 0.05
+
+
+def test_causal_cto_w_positive_signal_no_standardization():
+    ar = np.r_[1, 0.9]
+    ma = np.array([1])
+    arma_process = ArmaProcess(ar, ma)
+    X = 100 + arma_process.generate_sample(nsample=100)
+    y = 1.2 * X + np.random.normal(size=(100))
+    y[70:] += 1
+    data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
+    ci = CausalImpact(data, [0, 69], [70, 99], standardize=False)
+    assert ci.p_value < 0.05
+
+
+def test_default_causal_cto_w_negative_signal():
+    ar = np.r_[1, 0.9]
+    ma = np.array([1])
+    arma_process = ArmaProcess(ar, ma)
+    X = 100 + arma_process.generate_sample(nsample=100)
+    y = 1.2 * X + np.random.normal(size=(100))
+    y[70:] -= 1
+    data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
+    ci = CausalImpact(data, [0, 69], [70, 99])
+    assert ci.p_value < 0.05
+
+
+def test_causal_cto_w_negative_signal_no_standardization():
+    ar = np.r_[1, 0.9]
+    ma = np.array([1])
+    arma_process = ArmaProcess(ar, ma)
+    X = 100 + arma_process.generate_sample(nsample=100)
+    y = 1.2 * X + np.random.normal(size=(100))
+    y[70:] -= 1
+    data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
+    ci = CausalImpact(data, [0, 69], [70, 99], standardize=False)
+    assert ci.p_value < 0.05
+
+
+def test_causal_cto_w_negative_signal_no_standardization():
+    ar = np.r_[1, 0.9]
+    ma = np.array([1])
+    arma_process = ArmaProcess(ar, ma)
+    X = 100 + arma_process.generate_sample(nsample=100)
+    y = 1.2 * X + np.random.normal(size=(100))
+    y[70:] -= 1
+    data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
+    ci = CausalImpact(data, [0, 69], [70, 99], standardize=False)
+    assert ci.p_value < 0.05
+
+
+def test_default_causal_cto_no_signal():
+    ar = np.r_[1, 0.9]
+    ma = np.array([1])
+    arma_process = ArmaProcess(ar, ma)
+    X = 100 + arma_process.generate_sample(nsample=100)
+    y = 1.2 * X + np.random.normal(size=(100))
+    data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
+    ci = CausalImpact(data, [0, 69], [70, 99])
+    assert ci.p_value > 0.05
+
+
+def test_lower_upper_percentile():
+    ar = np.r_[1, 0.9]
+    ma = np.array([1])
+    arma_process = ArmaProcess(ar, ma)
+    X = 100 + arma_process.generate_sample(nsample=100)
+    y = 1.2 * X + np.random.normal(size=(100))
+    data = pd.DataFrame({'y': y, 'X': X}, columns=['y', 'X'])
+    ci = CausalImpact(data, [0, 69], [70, 99])
+    ci.lower_upper_percentile == [2.5, 97.5]

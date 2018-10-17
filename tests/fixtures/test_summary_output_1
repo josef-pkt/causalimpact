@@ -7,10 +7,10 @@ Prediction (s.d.)         4.3 (0.9)          9.3 (0.3)
 Absolute effect (s.d.)    3.3 (1.2)          10.3 (1.5)
 90% CI                    [2.3, 6.3]         [4.3, 9.3]
 
-Relative effect (s.d.)    12.3% (10.0%)      23.3% (10.0%)
+Relative effect (s.d.)    12.3% (6.1%)       23.3% (6.1%)
 90% CI                    [14.3%, 34.3%]     [13.3%, 33.3%]
 
 Posterior tail-area probability p: 0.459
 Posterior prob. of a causal effect: 54.07%
 
-For more details run the command: impact.summary(output='report')
+For more details run the command: print(impact.summary('report'))

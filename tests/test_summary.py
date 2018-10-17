@@ -70,12 +70,6 @@ def summary_data():
 def summarizer():
     return Summary()
 
-@pytest.fixture
-def path():
-    p = os.path.dirname(os.path.abspath(__file__))
-    p = os.path.join(p, 'fixtures')
-    return p
-
 
 def test_summary_raises(summarizer):
     summarizer = Summary()
@@ -86,57 +80,60 @@ def test_summary_raises(summarizer):
         summarizer.summary_data = 'test'
         summarizer.summary('test')    
 
-def test_output_summary_1(summary_data, path, summarizer):
+
+def test_output_summary_1(summary_data, fix_path, summarizer):
     summarizer.summary_data = summary_data
     summarizer.alpha = 0.1
     summarizer.p_value = 0.459329
 
     result = summarizer.summary()
-    expected = open(os.path.join(path, 'test_summary_output_1')).read().strip()
+    expected = open(os.path.join(fix_path, 'test_summary_output_1')).read().strip()
     assert result == expected
 
 
-def test_summary_1(summary_data, path, summarizer):
+def test_summary_1(summary_data, fix_path, summarizer):
     # detected positive signal but with no significance.
     summarizer.summary_data = summary_data
     summarizer.alpha = 0.1
     summarizer.p_value = 0.5
-    summary_data['average']['abs_effect_lower'] = 30.39
-    summary_data['average']['abs_effect_upper'] = -10.29
+    summary_data['average']['rel_effect'] = 0.41
+    summary_data['average']['rel_effect_lower'] = -0.30
+    summary_data['average']['rel_effect_upper'] = 0.30
  
     result = summarizer.summary(output='report')
-    expected = open(os.path.join(path, 'test_summary_1')).read().strip()
+    expected = open(os.path.join(fix_path, 'test_summary_1')).read().strip()
     assert result == expected
 
 
-def test_summary_2(summary_data, path, summarizer):
+def test_summary_2(summary_data, fix_path, summarizer):
     # detected positive signal with significance.
     summarizer.summary_data = summary_data
     summarizer.alpha = 0.1
     summarizer.p_value = 0.05
+    summary_data['average']['rel_effect'] = 0.41
     summary_data['average']['rel_effect_lower'] = 0.434
     summary_data['average']['rel_effect_upper'] = 0.234
  
     result = summarizer.summary(output='report')
-    expected = open(os.path.join(path, 'test_summary_2')).read().strip()
+    expected = open(os.path.join(fix_path, 'test_summary_2')).read().strip()
     assert result == expected
 
 
-def test_summary_3(summary_data, path, summarizer):
+def test_summary_3(summary_data, fix_path, summarizer):
     # detected negative signal but with no significance.
     summary_data['average']['rel_effect'] = -0.343
     summary_data['average']['rel_effect_lower'] = -0.434
-    summary_data['average']['rel_effect_upper'] = -0.234
+    summary_data['average']['rel_effect_upper'] = 0.234
     summarizer.summary_data = summary_data
     summarizer.alpha = 0.1
     summarizer.p_value = 0.5
 
     result = summarizer.summary(output='report')
-    expected = open(os.path.join(path, 'test_summary_3')).read().strip()
+    expected = open(os.path.join(fix_path, 'test_summary_3')).read().strip()
     assert result == expected
 
 
-def test_summary_4(summary_data, path, summarizer):
+def test_summary_4(summary_data, fix_path, summarizer):
     # detected negative signal with significance.
     summary_data['average']['rel_effect'] = -0.343
     summary_data['average']['rel_effect_lower'] = -0.434
@@ -146,19 +143,5 @@ def test_summary_4(summary_data, path, summarizer):
     summarizer.p_value = 0.05
 
     result = summarizer.summary(output='report')
-    expected = open(os.path.join(path, 'test_summary_4')).read().strip()
-    assert result == expected
-
-
-def test_summary_5(summary_data, path, summarizer):
-    # signal not detected.
-    summary_data['average']['rel_effect'] = -0.343
-    summary_data['average']['rel_effect_lower'] = -0.434
-    summary_data['average']['rel_effect_upper'] = 0.234
-    summarizer.summary_data = summary_data
-    summarizer.alpha = 0.1
-    summarizer.p_value = 0.5
-
-    result = summarizer.summary(output='report')
-    expected = open(os.path.join(path, 'test_summary_5')).read().strip()
+    expected = open(os.path.join(fix_path, 'test_summary_4')).read().strip()
     assert result == expected

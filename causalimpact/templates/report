@@ -1,10 +1,12 @@
 {% set detected_sig = not (summary.average.rel_effect_lower < 0 and summary.average.rel_effect_upper > 0) -%}
 {% set positive_sig = summary.average.rel_effect > 0 -%}
 {% macro CI(alpha) %}{{(((1 - alpha) * 100) | string).rstrip('0').rstrip('.')}}% CI{% endmacro -%}
+Analysis report {CausalImpact}
+
 
 During the post-intervention period, the response variable had
-an average value of approx. {{summary.average.actual | round(1)}}. {% if detected_sig -%}By contrast, in {% else %}In {% endif %} the absence of
-an intervention, we would have expected an average response of {{summary.average.predicted | round(1)}}.
+an average value of approx. {{summary.average.actual | round(1)}}. {% if detected_sig -%}By contrast, in{% else %}In{% endif %} the absence of an
+intervention, we would have expected an average response of {{summary.average.predicted | round(1)}}.
 The {{CI(alpha)}} interval of this counterfactual prediction is [{{summary.average.predicted_lower | round(1)}}, {{summary.average.predicted_upper | round(1)}}].
 Subtracting this prediction from the observed response yields
 an estimate of the causal effect the intervention had on the
@@ -15,12 +17,11 @@ see below.
 Summing up the individual data points during the post-intervention
 period (which can only sometimes be meaningfully interpreted), the
 response variable had an overall value of {{summary.cumulative.actual | round(1)}}.
-{% if detected_sig %}By contrast, had {% else %}Had{% endif %} the intervention not taken place,
-we would have expected a sum of {{summary.cumulative.predicted| round(1)}}.
-The {{CI(alpha)}} interval of this prediction is {{[summary.cumulative.predicted_lower | round(1), summary.cumulative.predicted_upper | round(1)]|sort}}.
+{% if detected_sig %}By contrast, had{% else %}Had{% endif %} the intervention not taken place, we would have expected
+a sum of {{summary.cumulative.predicted| round(1)}}. The {{CI(alpha)}} interval of this prediction is {{[summary.cumulative.predicted_lower | round(1), summary.cumulative.predicted_upper | round(1)]|sort}}.
 
-The above results are given in terms of absolute number. In relative
-terms, the response variable showed {% if positive_sig %}an increase of{% else %}a decrease of{% endif %} {{'{0:.1%}'.format(summary.average.rel_effect)}}. The {{CI(alpha)}}
+The above results are given in terms of absolute numbers. In relative
+terms, the response variable showed {% if positive_sig %}an increase of +{% else %}a decrease of {% endif %}{{'{0:.1%}'.format(summary.average.rel_effect)}}. The {{CI(alpha)}}
 interval of this percentage is [{{'{0:.1%}'.format([summary.average.rel_effect_lower, summary.average.rel_effect_upper] | min)}}, {{'{0:.1%}'.format([summary.average.rel_effect_upper, summary.average.rel_effect_lower]|max)}}].
 {% if detected_sig and positive_sig %}
 This means that the positive effect observed during the intervention

@@ -23,10 +23,18 @@
 """
 General fixtures for tests.
 """
+import os
 
 import numpy as np
 import pandas as pd
 import pytest
+
+
+@pytest.fixture
+def fix_path():
+    p = os.path.dirname(os.path.abspath(__file__))
+    p = os.path.join(p, 'fixtures')
+    return p
 
 
 @pytest.fixture

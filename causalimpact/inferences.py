@@ -40,6 +40,7 @@ class Inferences(object):
     def __init__(self, n_sims=1000):
         self._inferences = None
         self._p_value = None
+        self._simulated_y = None
         self.n_sims = n_sims
 
     @property
@@ -102,6 +103,59 @@ class Inferences(object):
         else:
             raise AttributeError('p_value attribute is Read-Only.')
 
+    @property
+    def simulated_y(self):
+        """
+        In order to process lower and upper boundaries for different metrics we simulate
+        several responses for `y` using parameters trained during the fitting phase.
+
+        Returns
+        -------
+          simulations: np.array
+              Array where each row is a simulation of the response variable whose shape is
+              (n simulations, n points in post period).
+        """
+        if self._simulated_y is None:
+            simulations = []
+            # For more information about the `trend` and how it works, please refer to:
+            # https://www.statsmodels.org/dev/generated/statsmodels.tsa.statespace.structural.UnobservedComponents.html
+            trend = self.model.trend_specification
+            y = np.zeros(len(self.post_data))
+            exog_data = self.post_data if self.mu_sig is None else self.normed_post_data
+            X = exog_data.iloc[:, 1:] if exog_data.shape[1] > 1 else None
+            model = UnobservedComponents(y, level=trend, exog=X)
+            # `params` is related to the parameters found when fitting the Kalman filter
+            # from the observed time series.
+            params = self.trained_model.params
+            predicted_state = self.trained_model.predicted_state[..., -1]
+            predicted_state_cov = self.trained_model.predicted_state_cov[..., -1]
+            for _ in range(self.n_sims):
+                initial_state = np.random.multivariate_normal(predicted_state,
+                                                              predicted_state_cov)
+                sim = model.simulate(params, len(self.post_data),
+                                     initial_state=initial_state)
+                if self.mu_sig:
+                    sim = sim * self.mu_sig[1] + self.mu_sig[0]
+                simulations.append(sim)
+            self._simulated_y = np.array(simulations)
+            return self._simulated_y
+        else:
+            return self._simulated_y
+
+    @property
+    def lower_upper_percentile(self):
+        """Returns the lower and upper quantile values for the chosen `alpha` value.
+
+        Returns
+        -------
+          lower_upper_percentile: list
+            First value is the lower quantile, second value is the upper one.
+        """
+        # lower quantile is alpha / 2 because we want a two-tail analysis on the
+        # confidence interval for our time series predictions just as upper quantile is
+        # 1 - alpha / 2.
+        return [self.alpha * 100. / 2., 100 - self.alpha * 100. / 2.]
+
     def _unstardardize(self, data):
         """
         If input data was standardized, this method is used to bring back data to its
@@ -142,7 +196,9 @@ class Inferences(object):
                 First value is the mean used for standardization and second value is the
                 standard deviation.
         """
+        lower, upper = self.lower_upper_percentile
         exog = self.post_data if self.mu_sig is None else self.normed_post_data
+        zero_series = pd.Series([0])
 
         pre_predictor = self.trained_model.get_prediction()
         post_predictor = self.trained_model.get_forecast(
@@ -154,11 +210,11 @@ class Inferences(object):
         pre_preds = self._unstardardize(pre_predictor.predicted_mean)
         post_preds = self._unstardardize(post_predictor.predicted_mean)
 
-        # Sets index properly
+        # Sets index properly.
         pre_preds.index = self.pre_data.index
         post_preds.index = self.post_data.index
 
-        # Confidence Intervals
+        # Confidence Intervals.
         pre_ci = self._unstardardize(pre_predictor.conf_int(alpha=self.alpha))
         pre_preds_lower = pre_ci.iloc[:, 0]  # Only valid from statsmodels 0.9.0
         pre_preds_upper = pre_ci.iloc[:, 1]
@@ -166,35 +222,66 @@ class Inferences(object):
         post_preds_lower = post_ci.iloc[:, 0]
         post_preds_upper = post_ci.iloc[:, 1]
 
-        # Sets index properly
+        # Sets index properly.
         pre_preds_lower.index = self.pre_data.index
         pre_preds_upper.index = self.pre_data.index
         post_preds_lower.index = self.post_data.index
         post_preds_upper.index = self.post_data.index
 
-        # Concatenations
+        # Concatenations.
         preds = pd.concat([pre_preds, post_preds])
         preds_lower = pd.concat([pre_preds_lower, post_preds_lower])
         preds_upper = pd.concat([pre_preds_upper, post_preds_upper])
 
-        # Cumulative analysis
+        # Cumulative analysis.
         post_cum_y = np.cumsum(self.post_data.iloc[:, 0])
+        post_cum_y = pd.concat([zero_series, post_cum_y], axis=0)
+        post_cum_y.index = self.get_cum_index()
         post_cum_pred = np.cumsum(post_preds)
-        post_cum_pred_lower = np.cumsum(post_preds_lower)
-        post_cum_pred_upper = np.cumsum(post_preds_upper)
+        post_cum_pred = pd.concat([zero_series, post_cum_pred])
+        post_cum_pred.index = self.get_cum_index()
+        post_cum_pred_lower, post_cum_pred_upper = np.percentile(
+            np.cumsum(self.simulated_y, axis=1),
+            [lower, upper],
+            axis=0
+        )
 
-        # Effects analysis
+        # Sets index properly.
+        post_cum_pred_lower = pd.Series(
+            np.concatenate([[0], post_cum_pred_lower]),
+            index=self.get_cum_index()
+        )
+        post_cum_pred_upper = pd.Series(
+            np.concatenate([[0], post_cum_pred_upper]),
+            index=self.get_cum_index()
+        )
+
+        # Effects analysis.
         point_effects = self.data.iloc[:, 0] - preds
-        point_effects_lower = self.data.iloc[:, 0] - preds_lower
-        point_effects_upper = self.data.iloc[:, 0] - preds_upper
-        post_point_effects = self.post_data.iloc[:, 0] - preds
-        post_point_effects_lower = self.post_data.iloc[:, 0] - preds_lower
-        post_point_effects_upper = self.post_data.iloc[:, 0] - preds_upper
+        point_effects_lower = self.data.iloc[:, 0] - preds_upper
+        point_effects_upper = self.data.iloc[:, 0] - preds_lower
+        post_point_effects = self.post_data.iloc[:, 0] - post_preds
 
-        # Cumulative Effects analysis
-        cum_effects = np.cumsum(post_point_effects)
-        cum_effects_lower = np.cumsum(post_point_effects_lower)
-        cum_effects_upper = np.cumsum(post_point_effects_upper)
+        # Cumulative Effects analysis.
+        post_cum_effects = np.cumsum(post_point_effects)
+        post_cum_effects = pd.concat([zero_series, post_cum_effects])
+        post_cum_effects.index = self.get_cum_index()
+        post_cum_effects_lower, post_cum_effects_upper = np.percentile(
+            np.cumsum(self.post_data.iloc[:, 0].values - self.simulated_y, axis=1),
+            [lower, upper],
+            axis=0
+        )
+
+        # Sets index properly.
+        post_cum_effects_lower = pd.Series(
+            np.concatenate([[0], post_cum_effects_lower]),
+            index=self.get_cum_index()
+        )
+        post_cum_effects_upper = pd.Series(
+            np.concatenate([[0], post_cum_effects_upper]),
+            index=self.get_cum_index()
+        )
+
         self.inferences = pd.concat(
             [
                 post_cum_y,
@@ -210,9 +297,9 @@ class Inferences(object):
                 point_effects,
                 point_effects_lower,
                 point_effects_upper,
-                cum_effects,
-                cum_effects_lower,
-                cum_effects_upper
+                post_cum_effects,
+                post_cum_effects_lower,
+                post_cum_effects_upper
             ],
             axis=1
         )
@@ -231,10 +318,21 @@ class Inferences(object):
             'point_effects',
             'point_effects_lower',
             'point_effects_upper',
-            'cum_effects',
-            'cum_effects_lower',
-            'cum_effects_upper'
+            'post_cum_effects',
+            'post_cum_effects_lower',
+            'post_cum_effects_upper'
         ]
+
+    def get_cum_index(self):
+        """As the cumulative data has one more data point (the first zero point), we add
+        to the post-intervention data the first index of the pre-data.
+
+        Returns
+        -------
+          index: pandas.core.indexes
+            Index that describes data points in a pandas DataFrame.
+        """
+        return self.data.loc[self.pre_period[1]: self.post_period[1]].index
 
     def _summarize_posterior_inferences(self):
         """
@@ -242,28 +340,29 @@ class Inferences(object):
         the results and gets the final interpretation for the causal impact results, such
         as what is the expected absolute impact of the given intervention.
         """
+        lower, upper = self.lower_upper_percentile
         infers = self.inferences
 
         # Compute the mean of metrics.
         mean_post_y = self.post_data.iloc[:, 0].mean()
         mean_post_pred = infers['post_preds'].mean()
-        mean_post_pred_lower = infers['post_preds_lower'].mean()
-        mean_post_pred_upper = infers['post_preds_upper'].mean()
+        mean_post_pred_lower, mean_post_pred_upper = np.percentile(
+            self.simulated_y.mean(axis=1), [lower, upper])
 
         # Compute the sum of metrics.
         sum_post_y = self.post_data.iloc[:, 0].sum()
         sum_post_pred = infers['post_preds'].sum()
-        sum_post_pred_lower = infers['post_preds_lower'].sum()
-        sum_post_pred_upper = infers['post_preds_upper'].sum()
+        sum_post_pred_lower, sum_post_pred_upper = np.percentile(
+            self.simulated_y.sum(axis=1), [lower, upper])
 
         # Causal Impact analysis metrics.
         abs_effect = mean_post_y - mean_post_pred
-        abs_effect_lower = mean_post_y - mean_post_pred_lower
-        abs_effect_upper = mean_post_y - mean_post_pred_upper
+        abs_effect_lower = mean_post_y - mean_post_pred_upper
+        abs_effect_upper = mean_post_y - mean_post_pred_lower
 
         sum_abs_effect = sum_post_y - sum_post_pred
-        sum_abs_effect_lower = sum_post_y - sum_post_pred_lower
-        sum_abs_effect_upper = sum_post_y - sum_post_pred_upper
+        sum_abs_effect_lower = sum_post_y - sum_post_pred_upper
+        sum_abs_effect_upper = sum_post_y - sum_post_pred_lower
 
         rel_effect = abs_effect / mean_post_pred
         rel_effect_lower = abs_effect_lower / mean_post_pred
@@ -287,6 +386,7 @@ class Inferences(object):
             [rel_effect_lower, sum_rel_effect_lower],
             [rel_effect_upper, sum_rel_effect_upper]
         ]
+
         self.summary_data = pd.DataFrame(
             summary_data,
             columns=['average', 'cumulative'],
@@ -315,10 +415,10 @@ class Inferences(object):
         total summation of `y` (in case there's positive relative effect) or how many
         falls under its summation (in which case there's negative relative effect).
 
-        For a better understanding of how this solution was obtained, this discussion was 
+        For a better understanding of how this solution was obtained, this discussion was
         used as the main guide:
 
-        https://stackoverflow.com/questions/51881148/simulating-time-series-with-unobserved-components-model/ # noqa
+        https://stackoverflow.com/questions/51881148/simulating-time-series-with-unobserved-components-model/
 
         Args
         ----
@@ -331,33 +431,13 @@ class Inferences(object):
               Ranging between 0 and 1, represents the likelihood of obtaining the observed
               data by random chance.
         """
-        # For more information about the `trend` and how it works, please refer to:
-        # https://www.statsmodels.org/dev/generated/statsmodels.tsa.statespace.structural.UnobservedComponents.html
-        trend = self.model.trend_specification
-        y = np.zeros(len(self.post_data))
-        X = self.post_data.iloc[:, 1:] if self.post_data.shape[1] > 1 else None
-        model = UnobservedComponents(y, level=trend, exog=X)
-        # `params` is related to the parameters found when fitting the Kalman filter
-        # from the observed time series.
-        params = self.trained_model.params
-        predicted_state = self.trained_model.predicted_state[..., -1]
-        predicted_state_cov = self.trained_model.predicted_state_cov[..., -1]
         y_post_sum = self.post_data.iloc[:, 0].sum()
-        positive_signal, negative_signal = 1, 1
-        for _ in range(n_sims):
-            initial_state = np.random.multivariate_normal(predicted_state,
-                                                          predicted_state_cov)
-            sim = model.simulate(params, len(self.post_data), initial_state=initial_state)
-            sim_sum = sim.sum()
-            if sim_sum > y_post_sum:
-                positive_signal += 1
-            else:
-                negative_signal += 1
+        sim_sum = self.simulated_y.sum(axis=1)
         # The minimum value between positive and negative signals reveals how many times
         # either the summation of the simulation could surpass ``y_post_sum`` or be
         # surpassed by the same (in which case it means the sum of the simulated time
         # series is bigger than ``y_post_sum`` most of the time, meaning the signal in
         # this case reveals the impact caused the response variable to decrease from what
         # was expected had no effect taken place.
-        p_value = min(positive_signal, negative_signal) / (n_sims + 1)
-        return p_value
+        signal = min(np.sum(sim_sum > y_post_sum), np.sum(sim_sum < y_post_sum))
+        return signal / (self.n_sims + 1)

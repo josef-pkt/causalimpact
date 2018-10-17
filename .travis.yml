@@ -3,10 +3,13 @@ language: python
 install:
   - make
   - pip install coveralls
+script:
+  - make isort-check
+  - make flake8
 cache: pip
 jobs:
   include:
-    - stage: tests
+    - stage: test
       python: 3.6
       script:
         - make coverage

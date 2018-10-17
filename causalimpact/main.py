@@ -27,7 +27,6 @@ Causal Impact class for running impact inferences caused in a time evolving syst
 
 import numpy as np
 import pandas as pd
-from pandas.core.indexes.datetimes import DatetimeIndex
 from statsmodels.tsa.statespace.structural import UnobservedComponents
 
 from causalimpact.inferences import Inferences
@@ -58,7 +57,7 @@ class BaseCausal(Inferences, Summary, Plot):
       alpha: float.
           Indicating significance level for hypothesis testing.
       mu_sig: list.
-          With two values where first is the man used to normalize pre_data and
+          With two values where first is the mean used to normalize `pre_data` and
           second value is the standard deviation also used in the normalization.
     """
     def __init__(self, data, pre_period, post_period, pre_data, post_data, alpha,

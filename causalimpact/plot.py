@@ -58,7 +58,7 @@ class Plot(object):
         if 'original' in panels:
             ax.plot(self.data.iloc[:, 0], 'k', label='y')
             ax.plot(inferences['preds'], 'b--', label='Predicted')
-            ax.axvline(inferences.index[intervention_idx], c='k', linestyle='--')
+            ax.axvline(inferences.index[intervention_idx] - 1, c='k', linestyle='--')
             ax.fill_between(
                 inferences['preds'].index,
                 inferences['preds_lower'],
@@ -76,7 +76,7 @@ class Plot(object):
         if 'pointwise' in panels:
             ax = plt.subplot(n_panels, 1, idx, sharex=ax)
             ax.plot(inferences['point_effects'], 'b--', label='Point Effects')
-            ax.axvline(inferences.index[intervention_idx], c='k', linestyle='--')
+            ax.axvline(inferences.index[intervention_idx] - 1, c='k', linestyle='--')
             ax.fill_between(
                 inferences['point_effects'].index,
                 inferences['point_effects_lower'],
@@ -94,12 +94,12 @@ class Plot(object):
 
         if 'cumulative' in panels:
             ax = plt.subplot(n_panels, 1, idx, sharex=ax)
-            ax.plot(inferences['cum_effects'], 'b--', label='Cumulative Effect')
-            ax.axvline(inferences.index[intervention_idx], c='k', linestyle='--')
+            ax.plot(inferences['post_cum_effects'], 'b--', label='Cumulative Effect')
+            ax.axvline(inferences.index[intervention_idx] - 1, c='k', linestyle='--')
             ax.fill_between(
-                inferences['cum_effects'].index,
-                inferences['cum_effects_lower'],
-                inferences['cum_effects_upper'],
+                inferences['post_cum_effects'].index,
+                inferences['post_cum_effects_lower'],
+                inferences['post_cum_effects_upper'],
                 facecolor='blue',
                 interpolate=True,
                 alpha=0.25

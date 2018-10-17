@@ -25,6 +25,7 @@ Tests for module main.py. Fixtures comes from file conftest.py located at the sa
 of this file.
 """
 
+import os
 
 import numpy as np
 import pandas as pd
@@ -32,7 +33,6 @@ import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 from pandas.core.indexes.range import RangeIndex
 from pandas.util.testing import assert_frame_equal, assert_series_equal
-from statsmodels.tsa.arima_process import ArmaProcess
 from statsmodels.tsa.statespace.structural import (UnobservedComponents,
                                                    UnobservedComponentsResultsWrapper)
 
@@ -428,335 +428,72 @@ def test_periods_validation(rand_data, date_rand_data):
     assert str(excinfo.value) == ('20170101 not present in input data index.')
 
 
-def test_default_causal_inferences(rand_data, pre_int_period, post_int_period):
-    ci = CausalImpact(rand_data, pre_int_period, post_int_period)
+def test_default_causal_inferences(fix_path):
+    np.random.seed(1)
+    data = pd.read_csv(os.path.join(fix_path, 'google_data.csv'))
+    del data['t']
 
-    pre_data = rand_data.loc[pre_int_period[0]: pre_int_period[1], :]
-    post_data = rand_data.loc[post_int_period[0]: post_int_period[1], :]
+    pre_period = [0, 60]
+    post_period = [61, 90]
 
-    normed_pre_data, (mu, sig) = standardize(pre_data)
-    normed_post_data = (post_data - mu) / sig
-    mu, sig = mu[0], sig[0]
+    ci = CausalImpact(data, pre_period, post_period)
+    assert int(ci.summary_data['average']['actual']) == 156
+    assert int(ci.summary_data['average']['predicted']) == 129
+    assert int(ci.summary_data['average']['predicted_lower']) == 102
+    assert int(ci.summary_data['average']['predicted_upper']) == 156
+    assert int(ci.summary_data['average']['abs_effect']) == 26
+    assert round(ci.summary_data['average']['abs_effect_lower'], 1) == -0.2
+    assert int(ci.summary_data['average']['abs_effect_upper']) == 53
+    assert round(ci.summary_data['average']['rel_effect'], 1) == 0.2
+    assert round(ci.summary_data['average']['rel_effect_lower'], 1) == 0.0
+    assert round(ci.summary_data['average']['rel_effect_upper'], 1) == 0.4
 
-    model = UnobservedComponents(endog=normed_pre_data.iloc[:, 0],
-                                 level='llevel',
-                                 exog=normed_pre_data.iloc[:, 1:]
-    )
-    f_model = model.fit()
-    pre_predictor = f_model.get_prediction()
-    post_predictor = f_model.get_forecast(
-        steps=len(normed_post_data), exog=normed_post_data.iloc[:, 1:]
-    )
-    init_nan_vec = pd.Series([np.nan] * (pre_int_period[1] + 1),
-                                index=np.arange(pre_int_period[1] + 1))
+    assert int(ci.summary_data['cumulative']['actual']) == 4687
+    assert int(ci.summary_data['cumulative']['predicted']) == 3883
+    assert int(ci.summary_data['cumulative']['predicted_lower']) == 3085
+    assert int(ci.summary_data['cumulative']['predicted_upper']) == 4693
+    assert int(ci.summary_data['cumulative']['abs_effect']) == 803
+    assert round(ci.summary_data['cumulative']['abs_effect_lower'], 1) == -6.8
+    assert int(ci.summary_data['cumulative']['abs_effect_upper']) == 1601
+    assert round(ci.summary_data['cumulative']['rel_effect'], 1) == 0.2
+    assert round(ci.summary_data['cumulative']['rel_effect_lower'], 1) == 0.0
+    assert round(ci.summary_data['cumulative']['rel_effect_upper'], 1) == 0.4
 
-    assert ci.inferences['post_cum_y'].iloc[-1] == np.cumsum(
-        post_data['y']
-    ).iloc[-1]
-
-    pre_preds = pre_predictor.predicted_mean * sig + mu
-    pre_ci = pre_predictor.conf_int()
-    pre_preds_lower = pre_ci.iloc[:, 0] * sig + mu
-    pre_preds_upper = pre_ci.iloc[:, 1] * sig + mu
-    post_preds = post_predictor.predicted_mean * sig + mu
-    post_preds.inex = normed_post_data.index
-    preds = pd.concat([pre_preds, post_preds])
-    preds.name = 'preds'
-    assert_series_equal(ci.inferences['preds'], preds)
-
-    post_preds = pd.concat([init_nan_vec, post_preds])
-    post_preds.name = 'post_preds'
-    assert_series_equal(post_preds, ci.inferences['post_preds'])
-
-    post_ci = post_predictor.conf_int()
-    post_preds_lower = post_ci.iloc[:, 0] * sig + mu
-    post_preds_upper = post_ci.iloc[:, 1] * sig + mu
-    post_preds_lower_complete = pd.concat([init_nan_vec, post_preds_lower])
-    post_preds_lower_complete.name = 'post_preds_lower'
-    assert_series_equal(post_preds_lower_complete,
-                        ci.inferences['post_preds_lower'])
-    post_preds_upper_complete = pd.concat([init_nan_vec, post_preds_upper])
-    post_preds_upper_complete.name = 'post_preds_upper'
-    assert_series_equal(post_preds_upper_complete,
-                        ci.inferences['post_preds_upper'])
-
-    preds_lower = pd.concat([pre_preds_lower, post_preds_lower])
-    preds_lower.name = 'preds_lower'
-    assert_series_equal(preds_lower, ci.inferences['preds_lower'])
-
-    preds_upper = pd.concat([pre_preds_upper, post_preds_upper])
-    preds_upper.name = 'preds_upper'
-    assert_series_equal(preds_upper, ci.inferences['preds_upper'])
-    assert ci.inferences['post_cum_pred'].iloc[-1] == np.cumsum(
-        post_preds
-    ).iloc[-1]
-
-    ci.inferences['post_cum_pred_lower'].iloc[-1] == np.cumsum(
-        post_preds_lower
-    ).iloc[-1]
-    ci.inferences['post_cum_pred_upper'].iloc[-1] == np.cumsum(
-        post_preds_upper
-    ).iloc[-1]
-
-    point_effects = rand_data.iloc[:, 0] - preds
-    point_effects.name = 'point_effects'
-    assert_series_equal(point_effects, ci.inferences['point_effects'])
-
-    point_effects_lower = rand_data.iloc[:, 0] - preds_lower
-    point_effects_lower.name = 'point_effects_lower'
-    assert_series_equal(point_effects_lower,
-                        ci.inferences['point_effects_lower'])
-    
-    point_effects_upper = rand_data.iloc[:, 0] - preds_upper
-    point_effects_upper.name = 'point_effects_upper'
-    assert_series_equal(point_effects_upper,
-                        ci.inferences['point_effects_upper'])
-
-    post_point_effects = post_data.iloc[:, 0] - post_preds
-    assert ci.inferences['cum_effects'].iloc[-1] == np.cumsum(
-        post_point_effects
-    ).iloc[-1]
- 
-    post_point_effects_lower = post_data.iloc[:, 0] - post_preds_lower
-    assert ci.inferences['cum_effects_lower'].iloc[-1] == np.cumsum(
-        post_point_effects_lower).iloc[-1]
-    
-    post_point_effects_upper = post_data.iloc[:, 0] - post_preds_upper
-    assert ci.inferences['cum_effects_upper'].iloc[-1] == np.cumsum(
-        post_point_effects_upper).iloc[-1]
-
-    # Summary testing.
-    mean_post_y = post_data.iloc[:, 0].mean()
-    sum_post_y = post_data.iloc[:, 0].sum()
-    assert_allclose(ci.summary_data['average']['actual'], mean_post_y)
-    assert_allclose(ci.summary_data['cumulative']['actual'], sum_post_y)
-
-    mean_post_pred = post_preds.mean()
-    sum_post_pred = post_preds.sum()
-    assert_allclose(ci.summary_data['average']['predicted'], mean_post_pred)
-    assert_allclose(ci.summary_data['cumulative']['predicted'], sum_post_pred)
-
-    mean_post_pred_lower = post_preds_lower.mean()
-    sum_post_pred_lower = post_preds_lower.sum()
-    assert_allclose(ci.summary_data['average']['predicted_lower'],
-                    mean_post_pred_lower)
-    assert_allclose(ci.summary_data['cumulative']['predicted_lower'],
-                    sum_post_pred_lower)
-
-    mean_post_pred_upper = post_preds_upper.mean()
-    sum_post_pred_upper = post_preds_upper.sum()
-    assert_allclose(ci.summary_data['average']['predicted_upper'], mean_post_pred_upper)
-    assert_allclose(ci.summary_data['cumulative']['predicted_upper'], sum_post_pred_upper)
-
-    abs_effect = mean_post_y - mean_post_pred
-    sum_abs_effect = sum_post_y - sum_post_pred
-    assert_allclose(ci.summary_data['average']['abs_effect'], abs_effect)
-    assert_allclose(ci.summary_data['cumulative']['abs_effect'], sum_abs_effect)
-
-    abs_effect_lower = mean_post_y - mean_post_pred_lower
-    sum_abs_effect_lower = sum_post_y - sum_post_pred_lower
-    assert_allclose(ci.summary_data['average']['abs_effect_lower'], abs_effect_lower)
-    assert_allclose(ci.summary_data['cumulative']['abs_effect_lower'],
-                    sum_abs_effect_lower)
-
-    abs_effect_upper = mean_post_y - mean_post_pred_upper
-    sum_abs_effect_upper = sum_post_y - sum_post_pred_upper
-    assert_allclose(ci.summary_data['average']['abs_effect_upper'], abs_effect_upper)
-    assert_allclose(ci.summary_data['cumulative']['abs_effect_upper'],
-                    sum_abs_effect_upper)
-
-    rel_effect = abs_effect / mean_post_pred
-    sum_abs_effect = sum_abs_effect / sum_post_pred
-    assert_allclose(ci.summary_data['average']['rel_effect'], rel_effect)
-    assert_allclose(ci.summary_data['cumulative']['rel_effect'], sum_abs_effect)
-
-    rel_effect_lower = abs_effect_lower / mean_post_pred
-    sum_abs_effect_lower = sum_abs_effect_lower / sum_post_pred
-    assert_allclose(ci.summary_data['average']['rel_effect_lower'], rel_effect_lower)
-    assert_allclose(ci.summary_data['cumulative']['rel_effect_lower'],
-                    rel_effect_lower)
-
-    rel_effect_upper = abs_effect_upper / mean_post_pred
-    sum_abs_effect_upper = sum_abs_effect_upper / sum_post_pred
-    assert_allclose(ci.summary_data['average']['rel_effect_upper'], rel_effect_upper)
-    assert_allclose(ci.summary_data['cumulative']['rel_effect_upper'],
-                    rel_effect_upper)
-
-    assert ci.p_value is not None
-    assert ci.p_value > 0
-    assert ci.p_value < 1
+    assert round(ci.p_value, 1) == 0.0
 
 
-def test_default_causal_inferences_w_date(date_rand_data, pre_str_period,
-                                          post_str_period):
-    ci = CausalImpact(date_rand_data, pre_str_period, post_str_period)
+def test_default_causal_inferences_w_date(fix_path):
+    np.random.seed(1)
+    data = pd.read_csv(os.path.join(fix_path, 'google_data.csv'))
+    data['date'] = pd.to_datetime(data['t'])
+    data.index = data['date']
+    del data['t']
+    del data['date']
 
-    pre_data = date_rand_data.loc[pre_str_period[0]: pre_str_period[1], :]
-    post_data = date_rand_data.loc[post_str_period[0]: post_str_period[1], :]
+    pre_period = ['2016-02-20 22:41:20', '2016-02-20 22:51:20']
+    post_period = ['2016-02-20 22:51:30', '2016-02-20 22:56:20']
 
-    normed_pre_data, (mu, sig) = standardize(pre_data)
-    normed_post_data = (post_data - mu) / sig
-    mu, sig = mu[0], sig[0]
+    ci = CausalImpact(data, pre_period, post_period)
+    assert int(ci.summary_data['average']['actual']) == 156
+    assert int(ci.summary_data['average']['predicted']) == 129
+    assert int(ci.summary_data['average']['predicted_lower']) == 102
+    assert int(ci.summary_data['average']['predicted_upper']) == 156
+    assert int(ci.summary_data['average']['abs_effect']) == 26
+    assert round(ci.summary_data['average']['abs_effect_lower'], 1) == -0.2
+    assert int(ci.summary_data['average']['abs_effect_upper']) == 53
+    assert round(ci.summary_data['average']['rel_effect'], 1) == 0.2
+    assert round(ci.summary_data['average']['rel_effect_lower'], 1) == 0.0
+    assert round(ci.summary_data['average']['rel_effect_upper'], 1) == 0.4
 
-    model = UnobservedComponents(endog=normed_pre_data.iloc[:, 0], level='llevel',
-                                 exog=normed_pre_data.iloc[:, 1:])
-    f_model = model.fit()
-    pre_predictor = f_model.get_prediction()
-    post_predictor = f_model.get_forecast(
-        steps=len(normed_post_data), exog=normed_post_data.iloc[:, 1:]
-    )
-    nobs = date_rand_data.index.get_loc(pre_str_period[1]) + 1
-    init_nan_vec = pd.Series(
-        [np.nan] * (nobs),
-        index=pd.date_range(start=pre_str_period[0], periods=nobs)
-    )
+    assert int(ci.summary_data['cumulative']['actual']) == 4687
+    assert int(ci.summary_data['cumulative']['predicted']) == 3883
+    assert int(ci.summary_data['cumulative']['predicted_lower']) == 3085
+    assert int(ci.summary_data['cumulative']['predicted_upper']) == 4693
+    assert int(ci.summary_data['cumulative']['abs_effect']) == 803
+    assert round(ci.summary_data['cumulative']['abs_effect_lower'], 1) == -6.8
+    assert int(ci.summary_data['cumulative']['abs_effect_upper']) == 1601
+    assert round(ci.summary_data['cumulative']['rel_effect'], 1) == 0.2
+    assert round(ci.summary_data['cumulative']['rel_effect_lower'], 1) == 0.0
+    assert round(ci.summary_data['cumulative']['rel_effect_upper'], 1) == 0.4
 
-    assert ci.inferences['post_cum_y'].iloc[-1] == np.cumsum(post_data['y']).iloc[-1]
-
-    pre_preds = pre_predictor.predicted_mean * sig + mu
-    pre_ci = pre_predictor.conf_int()
-    pre_preds_lower = pre_ci.iloc[:, 0] * sig + mu
-    pre_preds_upper = pre_ci.iloc[:, 1] * sig + mu
-    post_preds = post_predictor.predicted_mean * sig + mu
-    post_preds.inex = normed_post_data.index
-    preds = pd.concat([pre_preds, post_preds])
-    preds.name = 'preds'
-    assert_series_equal(ci.inferences['preds'], preds)
-
-    post_preds = pd.concat([init_nan_vec, post_preds])
-    post_preds.name = 'post_preds'
-    assert_series_equal(post_preds, ci.inferences['post_preds'])
-
-    post_ci = post_predictor.conf_int()
-    post_preds_lower = post_ci.iloc[:, 0] * sig + mu
-    post_preds_upper = post_ci.iloc[:, 1] * sig + mu
-    post_preds_lower_complete = pd.concat([init_nan_vec, post_preds_lower])
-    post_preds_lower_complete.name = 'post_preds_lower'
-    assert_series_equal(post_preds_lower_complete, ci.inferences['post_preds_lower'])
-    post_preds_upper_complete = pd.concat([init_nan_vec, post_preds_upper])
-    post_preds_upper_complete.name = 'post_preds_upper'
-    assert_series_equal(post_preds_upper_complete, ci.inferences['post_preds_upper'])
-
-    preds_lower = pd.concat([pre_preds_lower, post_preds_lower])
-    preds_lower.name = 'preds_lower'
-    assert_series_equal(preds_lower, ci.inferences['preds_lower'])
-
-    preds_upper = pd.concat([pre_preds_upper, post_preds_upper])
-    preds_upper.name = 'preds_upper'
-    assert_series_equal(preds_upper, ci.inferences['preds_upper'])
-    assert ci.inferences['post_cum_pred'].iloc[-1] == np.cumsum(post_preds).iloc[-1]
-
-    ci.inferences['post_cum_pred_lower'].iloc[-1] == np.cumsum(post_preds_lower).iloc[-1]
-    ci.inferences['post_cum_pred_upper'].iloc[-1] == np.cumsum(post_preds_upper).iloc[-1]
-
-    point_effects = date_rand_data.iloc[:, 0] - preds
-    point_effects.name = 'point_effects'
-    assert_series_equal(point_effects, ci.inferences['point_effects'])
-
-    point_effects_lower = date_rand_data.iloc[:, 0] - preds_lower
-    point_effects_lower.name = 'point_effects_lower'
-    assert_series_equal(point_effects_lower, ci.inferences['point_effects_lower'])
-    
-    point_effects_upper = date_rand_data.iloc[:, 0] - preds_upper
-    point_effects_upper.name = 'point_effects_upper'
-    assert_series_equal(point_effects_upper, ci.inferences['point_effects_upper'])
-
-    post_point_effects = post_data.iloc[:, 0] - post_preds
-    assert ci.inferences['cum_effects'].iloc[-1] == np.cumsum(post_point_effects).iloc[-1]
-
-    post_point_effects_lower = post_data.iloc[:, 0] - post_preds_lower
-    assert ci.inferences['cum_effects_lower'].iloc[-1] == np.cumsum(
-        post_point_effects_lower).iloc[-1]
-
-    post_point_effects_upper = post_data.iloc[:, 0] - post_preds_upper
-    assert ci.inferences['cum_effects_upper'].iloc[-1] == np.cumsum(
-        post_point_effects_upper).iloc[-1]
-
-    # Summary testing.
-    mean_post_y = post_data.iloc[:, 0].mean()
-    sum_post_y = post_data.iloc[:, 0].sum()
-    assert_allclose(ci.summary_data['average']['actual'], mean_post_y)
-    assert_allclose(ci.summary_data['cumulative']['actual'], sum_post_y)
-
-    mean_post_pred = post_preds.mean()
-    sum_post_pred = post_preds.sum()
-    assert_allclose(ci.summary_data['average']['predicted'], mean_post_pred)
-    assert_allclose(ci.summary_data['cumulative']['predicted'], sum_post_pred)
-
-    mean_post_pred_lower = post_preds_lower.mean()
-    sum_post_pred_lower = post_preds_lower.sum()
-    assert_allclose(ci.summary_data['average']['predicted_lower'], mean_post_pred_lower)
-    assert_allclose(ci.summary_data['cumulative']['predicted_lower'], sum_post_pred_lower)
-
-    mean_post_pred_upper = post_preds_upper.mean()
-    sum_post_pred_upper = post_preds_upper.sum()
-    assert_allclose(ci.summary_data['average']['predicted_upper'], mean_post_pred_upper)
-    assert_allclose(ci.summary_data['cumulative']['predicted_upper'], sum_post_pred_upper)
-
-    abs_effect = mean_post_y - mean_post_pred
-    sum_abs_effect = sum_post_y - sum_post_pred
-    assert_allclose(ci.summary_data['average']['abs_effect'], abs_effect)
-    assert_allclose(ci.summary_data['cumulative']['abs_effect'], sum_abs_effect)
-
-    abs_effect_lower = mean_post_y - mean_post_pred_lower
-    sum_abs_effect_lower = sum_post_y - sum_post_pred_lower
-    assert_allclose(ci.summary_data['average']['abs_effect_lower'], abs_effect_lower)
-    assert_allclose(ci.summary_data['cumulative']['abs_effect_lower'],
-                    sum_abs_effect_lower)
-
-    abs_effect_upper = mean_post_y - mean_post_pred_upper
-    sum_abs_effect_upper = sum_post_y - sum_post_pred_upper
-    assert_allclose(ci.summary_data['average']['abs_effect_upper'], abs_effect_upper)
-    assert_allclose(ci.summary_data['cumulative']['abs_effect_upper'],
-                    sum_abs_effect_upper)
-
-    rel_effect = abs_effect / mean_post_pred
-    sum_abs_effect = sum_abs_effect / sum_post_pred
-    assert_allclose(ci.summary_data['average']['rel_effect'], rel_effect)
-    assert_allclose(ci.summary_data['cumulative']['rel_effect'], sum_abs_effect)
-
-    rel_effect_lower = abs_effect_lower / mean_post_pred
-    sum_abs_effect_lower = sum_abs_effect_lower / sum_post_pred
-    assert_allclose(ci.summary_data['average']['rel_effect_lower'], rel_effect_lower)
-    assert_allclose(ci.summary_data['cumulative']['rel_effect_lower'],
-                    rel_effect_lower)
-
-    rel_effect_upper = abs_effect_upper / mean_post_pred
-    sum_abs_effect_upper = sum_abs_effect_upper / sum_post_pred
-    assert_allclose(ci.summary_data['average']['rel_effect_upper'], rel_effect_upper)
-    assert_allclose(ci.summary_data['cumulative']['rel_effect_upper'],
-                    rel_effect_upper)
-
-    assert ci.p_value is not None
-    assert ci.p_value > 0
-    assert ci.p_value < 1
-
-
-def test_default_causal_cto_w_positive_signal(pre_int_period, post_int_period):
-    ar = np.r_[1, 0.9]
-    ma = np.array([1])
-    arma_process = ArmaProcess(ar, ma)
-
-    X = 100 + arma_process.generate_sample(nsample=100)
-    X = X.reshape(-1, 1)
-    y = 1.2 * X + np.random.normal(size=(100, 1))
-    y += 1
-    data = np.concatenate([y, X])
-    ci = CausalImpact(data, pre_int_period, post_int_period)
-
-    assert ci.p_value < 0.05
-
-
-def test_default_causal_cto_w_negative_signal(pre_int_period, post_int_period):
-    ar = np.r_[1, 0.9]
-    ma = np.array([1])
-    arma_process = ArmaProcess(ar, ma)
-
-    X = 100 + arma_process.generate_sample(nsample=100)
-    X = X.reshape(-1, 1)
-    y = 1.2 * X + np.random.normal(size=(100, 1))
-    y -= 1
-    data = np.concatenate([y, X])
-    ci = CausalImpact(data, pre_int_period, post_int_period)
-
-    assert ci.p_value < 0.05
+    assert round(ci.p_value, 1) == 0.0

@@ -1,6 +1,9 @@
+Analysis report {CausalImpact}
+
+
 During the post-intervention period, the response variable had
-an average value of approx. 5.3. By contrast, in  the absence of
-an intervention, we would have expected an average response of 4.3.
+an average value of approx. 5.3. By contrast, in the absence of an
+intervention, we would have expected an average response of 4.3.
 The 90% CI interval of this counterfactual prediction is [3.3, 6.3].
 Subtracting this prediction from the observed response yields
 an estimate of the causal effect the intervention had on the
@@ -11,12 +14,11 @@ see below.
 Summing up the individual data points during the post-intervention
 period (which can only sometimes be meaningfully interpreted), the
 response variable had an overall value of 10.3.
-By contrast, had  the intervention not taken place,
-we would have expected a sum of 9.3.
-The 90% CI interval of this prediction is [8.3, 9.3].
+By contrast, had the intervention not taken place, we would have expected
+a sum of 9.3. The 90% CI interval of this prediction is [8.3, 9.3].
 
-The above results are given in terms of absolute number. In relative
-terms, the response variable showed an increase of 12.3%. The 90% CI
+The above results are given in terms of absolute numbers. In relative
+terms, the response variable showed an increase of +41.0%. The 90% CI
 interval of this percentage is [23.4%, 43.4%].
 
 This means that the positive effect observed during the intervention

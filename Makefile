@@ -6,6 +6,10 @@ isort:
 	pipenv run isort -rc causalimpact
 	pipenv run isort -rc tests
 
+isort-check:
+	pipenv run isort -rc -c causalimpact
+	pipenv run isort -rc -c tests
+
 flake8:
 	pipenv run flake8 causalimpact
 
