@@ -19,4 +19,10 @@ coverage:
 test:
 	pipenv run py.test
 
-.PHONY: flake8 isort coverage test
+publish:
+	pip install 'twine>=1.5.0'
+	python setup.py sdist bdist_wheel
+	twine upload dist/*
+	rm -fr build dist .egg causalimpact.egg-info
+
+.PHONY: flake8 isort coverage test publish

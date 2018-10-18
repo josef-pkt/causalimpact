@@ -39,10 +39,17 @@ if sys.argv[-1] == 'publish':
     sys.exit()
 
 install_requires = [
-    'numpy',
-    'scipy',
-    'pandas',
-    'statsmodels'
+    'statsmodels>=0.9.0',
+    'matplotlib',
+    'jinja2'
+]
+
+test_requires = [
+    'pytest',
+    'pytest-coverage',
+    'flake8',
+    'isort',
+    'tox'
 ]
 
 packages = ['causalimpact']
@@ -56,28 +63,29 @@ with open('README.md', 'r', 'utf-8') as f:
     readme = f.read()
 
 setup(
-    name='causalimpact',
+    name='pycausalimpact',
     version=_version['__version__'],
     author='Willian Fuks',
     author_email='willian.fuks@gmail.com',
     url='https://github.com/dafiti/causalimpact',
     description= "Python version of Google's Causal Impact model",
     long_description=readme,
+    long_description_content_type='text/markdown',
     packages=packages,
     include_package_data=True,
     install_requires=install_requires,
+    test_requires=test_requires,
     license='MIT',
-    zip_safe=False,
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Alpha',
         'Environment :: Console',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Operating System :: Unix',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Scientific/Engineering',
     ]
 )

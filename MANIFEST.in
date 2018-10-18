@@ -1,0 +1,5 @@
+include README.md
+include LICENSE
+include Pipfile
+include Pipfile.lock
+recursive-include tests *.py
